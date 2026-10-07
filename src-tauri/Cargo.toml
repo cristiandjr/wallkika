@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Image, GIF, video or HTML wallpapers mirrored on every screen"
 authors = ["cristiandjr"]
 license = "MIT"
-repository = "https://github.com/cristiandjr/WallKika"
+repository = "https://github.com/cristiandjr/wallkika"
 edition = "2021"
 
 [lib]

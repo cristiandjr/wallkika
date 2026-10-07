@@ -43,21 +43,21 @@ fn feed_url_for(repository: &str) -> Option<String> {
 }
 
 fn is_release_url_for(repository: &str, url: &str) -> bool {
-    let releases = format!("{}/releases/", repository.trim_end_matches('/'));
-    !repository.is_empty() && url.starts_with(&releases)
+    let releases = format!("{}/releases/", repository.trim_end_matches('/')).to_lowercase();
+    !repository.is_empty() && url.to_lowercase().starts_with(&releases)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const REPO: &str = "https://github.com/cristiandjr/WallKika";
+    const REPO: &str = "https://github.com/cristiandjr/wallkika";
 
     #[test]
     fn builds_the_latest_release_feed() {
         assert_eq!(
             feed_url_for(REPO).as_deref(),
-            Some("https://api.github.com/repos/cristiandjr/WallKika/releases/latest")
+            Some("https://api.github.com/repos/cristiandjr/wallkika/releases/latest")
         );
         assert_eq!(feed_url_for(""), None);
         assert_eq!(feed_url_for("https://gitlab.com/someone/project"), None);
@@ -67,7 +67,7 @@ mod tests {
     fn only_opens_release_pages_of_this_repository() {
         assert!(is_release_url_for(
             REPO,
-            "https://github.com/cristiandjr/WallKika/releases/tag/v0.3.0"
+            "https://github.com/cristiandjr/wallkika/releases/tag/v0.3.0"
         ));
         assert!(!is_release_url_for(
             REPO,
@@ -75,8 +75,12 @@ mod tests {
         ));
         assert!(!is_release_url_for(
             REPO,
-            "https://evil.example/cristiandjr/WallKika/releases/"
+            "https://evil.example/cristiandjr/wallkika/releases/"
         ));
         assert!(!is_release_url_for("", "https://github.com//releases/x"));
+        assert!(is_release_url_for(
+            "https://github.com/cristiandjr/WallKika",
+            "https://github.com/cristiandjr/wallkika/releases/tag/v0.3.0"
+        ));
     }
 }

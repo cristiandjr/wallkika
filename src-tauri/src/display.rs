@@ -96,7 +96,10 @@ fn summary(displays: &[DisplayInfo]) -> String {
         .iter()
         .map(|d| {
             let main = if d.primary { ", main" } else { "" };
-            format!("{} {}x{} @{}x{main}", d.name, d.width, d.height, d.scale_factor)
+            format!(
+                "{} {}x{} @{}x{main}",
+                d.name, d.width, d.height, d.scale_factor
+            )
         })
         .collect::<Vec<_>>()
         .join(" | ")

@@ -37,7 +37,9 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         });
     if cfg!(target_os = "macos") {
         tray = tray
-            .icon(Image::from_bytes(include_bytes!("../icons/tray-template.png"))?)
+            .icon(Image::from_bytes(include_bytes!(
+                "../icons/tray-template.png"
+            ))?)
             .icon_as_template(true);
     } else if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());

@@ -113,7 +113,10 @@ impl Engine {
             return Err(err);
         }
 
-        log::info!("Wallpaper: {} ({kind:?}, {mode:?})", wallpaper.path.display());
+        log::info!(
+            "Wallpaper: {} ({kind:?}, {mode:?})",
+            wallpaper.path.display()
+        );
         self.publish(app);
         Ok(wallpaper)
     }
@@ -139,7 +142,10 @@ impl Engine {
             return;
         };
         if !wallpaper.path.is_file() {
-            log::warn!("Last wallpaper no longer exists: {}", wallpaper.path.display());
+            log::warn!(
+                "Last wallpaper no longer exists: {}",
+                wallpaper.path.display()
+            );
             lock(&self.state).current = None;
             self.publish(app);
             return;
@@ -156,9 +162,7 @@ impl Engine {
 
     pub fn sync_live_windows(&self, app: &AppHandle, displays: &[DisplayInfo]) -> Result<()> {
         let _op = lock(&self.ops);
-        let is_live = self
-            .current()
-            .is_some_and(|w| w.mode == RenderMode::Live);
+        let is_live = self.current().is_some_and(|w| w.mode == RenderMode::Live);
         if !is_live || displays.is_empty() {
             return Ok(());
         }

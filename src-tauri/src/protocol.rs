@@ -34,7 +34,8 @@ impl MediaScope {
         let Ok(path) = path.canonicalize() else {
             return false;
         };
-        lock(&self.files).contains(&path) || lock(&self.dirs).iter().any(|dir| path.starts_with(dir))
+        lock(&self.files).contains(&path)
+            || lock(&self.dirs).iter().any(|dir| path.starts_with(dir))
     }
 }
 
@@ -44,13 +45,22 @@ pub fn handle<R: Runtime>(
     responder: UriSchemeResponder,
 ) {
     let app = ctx.app_handle().clone();
-    tauri::async_runtime::spawn_blocking(move || responder.respond(respond(&app, &request)));
+    tauri::async_runtime::spawn_blocking(move || {
+        let response = respond(&app, &request);
+        // WebKit cancels requests on the main thread; answering there too avoids racing a cancelled task.
+        if let Err(err) = app.run_on_main_thread(move || responder.respond(response)) {
+            log::warn!("Could not deliver a media response: {err}");
+        }
+    });
 }
 
 fn respond<R: Runtime>(app: &AppHandle<R>, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     let path = path_from_uri(request.uri().path());
     if !app.state::<MediaScope>().allows(&path) {
-        log::warn!("Blocked media request outside the allowed files: {}", path.display());
+        log::warn!(
+            "Blocked media request outside the allowed files: {}",
+            path.display()
+        );
         return empty(StatusCode::FORBIDDEN);
     }
     let range = request
@@ -105,7 +115,12 @@ fn serve(path: &Path, range: Option<&str>) -> io::Result<Response<Vec<u8>>> {
 }
 
 fn byte_range(header: &str, len: u64) -> Option<(u64, u64)> {
-    let spec = header.trim().strip_prefix("bytes=")?.split(',').next()?.trim();
+    let spec = header
+        .trim()
+        .strip_prefix("bytes=")?
+        .split(',')
+        .next()?
+        .trim();
     let (first, last) = spec.split_once('-')?;
     let (start, end) = match (first.trim(), last.trim()) {
         ("", suffix) => {
@@ -116,7 +131,10 @@ fn byte_range(header: &str, len: u64) -> Option<(u64, u64)> {
             let start: u64 = first.parse().ok()?;
             (start, len.checked_sub(1)?)
         }
-        (first, last) => (first.parse().ok()?, last.parse::<u64>().ok()?.min(len.checked_sub(1)?)),
+        (first, last) => (
+            first.parse().ok()?,
+            last.parse::<u64>().ok()?.min(len.checked_sub(1)?),
+        ),
     };
     if start >= len || end < start {
         return None;
@@ -188,7 +206,10 @@ mod tests {
     #[test]
     fn serves_exact_bounded_ranges() {
         assert_eq!(byte_range("bytes=0-1", 100), Some((0, 1)));
-        assert_eq!(byte_range("bytes=10-5960419", 3_929_264_414), Some((10, 5_960_419)));
+        assert_eq!(
+            byte_range("bytes=10-5960419", 3_929_264_414),
+            Some((10, 5_960_419))
+        );
         assert_eq!(byte_range("bytes=90-500", 100), Some((90, 99)));
     }
 
@@ -196,7 +217,10 @@ mod tests {
     fn caps_open_and_huge_ranges() {
         assert_eq!(byte_range("bytes=0-", 4_000 * MB), Some((0, MAX_CHUNK - 1)));
         assert_eq!(byte_range("bytes=0-", 100), Some((0, 99)));
-        assert_eq!(byte_range("bytes=0-99999999999", 4_000 * MB), Some((0, MAX_CHUNK - 1)));
+        assert_eq!(
+            byte_range("bytes=0-99999999999", 4_000 * MB),
+            Some((0, MAX_CHUNK - 1))
+        );
     }
 
     #[test]

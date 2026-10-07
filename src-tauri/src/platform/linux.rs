@@ -80,7 +80,12 @@ fn setters_for(desktop: &str) -> Vec<Setter> {
     if has(&["gnome", "unity", "budgie", "pantheon", "cosmic"]) {
         setters.push(Setter::Gnome);
     }
-    setters.extend([Setter::Swww, Setter::Feh, Setter::Xwallpaper, Setter::Nitrogen]);
+    setters.extend([
+        Setter::Swww,
+        Setter::Feh,
+        Setter::Xwallpaper,
+        Setter::Nitrogen,
+    ]);
     setters
 }
 
@@ -93,25 +98,72 @@ fn apply(setter: Setter, path: &Path) -> Result<()> {
         .to_string();
     match setter {
         Setter::Gnome => {
-            run("gsettings", &["set", "org.gnome.desktop.background", "picture-uri", &uri])?;
-            let _ = run("gsettings", &["set", "org.gnome.desktop.background", "picture-uri-dark", &uri]);
-            let _ = run("gsettings", &["set", "org.gnome.desktop.background", "picture-options", "zoom"]);
+            run(
+                "gsettings",
+                &["set", "org.gnome.desktop.background", "picture-uri", &uri],
+            )?;
+            let _ = run(
+                "gsettings",
+                &[
+                    "set",
+                    "org.gnome.desktop.background",
+                    "picture-uri-dark",
+                    &uri,
+                ],
+            );
+            let _ = run(
+                "gsettings",
+                &[
+                    "set",
+                    "org.gnome.desktop.background",
+                    "picture-options",
+                    "zoom",
+                ],
+            );
             Ok(())
         }
         Setter::Cinnamon => {
-            run("gsettings", &["set", "org.cinnamon.desktop.background", "picture-uri", &uri])?;
-            let _ = run("gsettings", &["set", "org.cinnamon.desktop.background", "picture-options", "zoom"]);
+            run(
+                "gsettings",
+                &[
+                    "set",
+                    "org.cinnamon.desktop.background",
+                    "picture-uri",
+                    &uri,
+                ],
+            )?;
+            let _ = run(
+                "gsettings",
+                &[
+                    "set",
+                    "org.cinnamon.desktop.background",
+                    "picture-options",
+                    "zoom",
+                ],
+            );
             Ok(())
         }
         Setter::Mate => {
-            run("gsettings", &["set", "org.mate.background", "picture-filename", file])?;
-            let _ = run("gsettings", &["set", "org.mate.background", "picture-options", "zoom"]);
+            run(
+                "gsettings",
+                &["set", "org.mate.background", "picture-filename", file],
+            )?;
+            let _ = run(
+                "gsettings",
+                &["set", "org.mate.background", "picture-options", "zoom"],
+            );
             Ok(())
         }
         Setter::Kde => run("plasma-apply-wallpaperimage", &[file]),
         Setter::Xfce => set_xfce(file),
-        Setter::LxQt => run("pcmanfm-qt", &[&format!("--set-wallpaper={file}"), "--wallpaper-mode=zoom"]),
-        Setter::Lxde => run("pcmanfm", &[&format!("--set-wallpaper={file}"), "--wallpaper-mode=crop"]),
+        Setter::LxQt => run(
+            "pcmanfm-qt",
+            &[&format!("--set-wallpaper={file}"), "--wallpaper-mode=zoom"],
+        ),
+        Setter::Lxde => run(
+            "pcmanfm",
+            &[&format!("--set-wallpaper={file}"), "--wallpaper-mode=crop"],
+        ),
         Setter::Hyprland => run("hyprctl", &["hyprpaper", "reload", &format!(",{file}")]),
         Setter::Sway => run("swaymsg", &["output", "*", "bg", file, "fill"]),
         Setter::Swww => run("swww", &["img", file]),
@@ -131,9 +183,15 @@ fn set_xfce(file: &str) -> Result<()> {
         return Err(Error::platform("XFCE has no backdrop properties yet"));
     }
     for prop in image_props {
-        run("xfconf-query", &["-c", "xfce4-desktop", "-p", prop, "-s", file])?;
+        run(
+            "xfconf-query",
+            &["-c", "xfce4-desktop", "-p", prop, "-s", file],
+        )?;
         let style = prop.replace("/last-image", "/image-style");
-        let _ = run("xfconf-query", &["-c", "xfce4-desktop", "-p", &style, "-s", XFCE_STYLE_ZOOMED]);
+        let _ = run(
+            "xfconf-query",
+            &["-c", "xfce4-desktop", "-p", &style, "-s", XFCE_STYLE_ZOOMED],
+        );
     }
     Ok(())
 }

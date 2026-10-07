@@ -86,7 +86,7 @@ pub fn run() {
 fn create_panel(app: &AppHandle) -> tauri::Result<()> {
     WebviewWindowBuilder::new(app, PANEL_LABEL, WebviewUrl::App("index.html".into()))
         .title("WallKika")
-        .inner_size(460.0, 720.0)
+        .inner_size(460.0, 840.0)
         .min_inner_size(400.0, 560.0)
         .center()
         .additional_browser_args(platform::BROWSER_ARGS)

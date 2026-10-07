@@ -61,7 +61,10 @@ mod tests {
     #[test]
     fn missing_or_corrupt_file_falls_back_to_default() {
         let dir = temp_dir("fallback");
-        assert_eq!(Settings::load(&dir.join("missing.json")), Settings::default());
+        assert_eq!(
+            Settings::load(&dir.join("missing.json")),
+            Settings::default()
+        );
 
         let path = dir.join("corrupt.json");
         fs::write(&path, "{ not json").unwrap();

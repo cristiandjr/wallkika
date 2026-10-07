@@ -33,12 +33,16 @@ fn set_on_every_screen(path: &Path) -> Result<()> {
         .ok_or_else(|| Error::platform("The file path is not valid UTF-8"))?;
     let url = NSURL::fileURLWithPath(&NSString::from_str(path));
 
-    let scaling = NSNumber::numberWithUnsignedInteger(NSImageScaling::ScaleProportionallyUpOrDown.0);
+    let scaling =
+        NSNumber::numberWithUnsignedInteger(NSImageScaling::ScaleProportionallyUpOrDown.0);
     let clipping = NSNumber::numberWithBool(true);
     let (scaling, clipping): (&AnyObject, &AnyObject) = (&scaling, &clipping);
     let options = unsafe {
         NSDictionary::from_slices(
-            &[NSWorkspaceDesktopImageScalingKey, NSWorkspaceDesktopImageAllowClippingKey],
+            &[
+                NSWorkspaceDesktopImageScalingKey,
+                NSWorkspaceDesktopImageAllowClippingKey,
+            ],
             &[scaling, clipping],
         )
     };

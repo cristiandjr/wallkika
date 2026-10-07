@@ -40,7 +40,13 @@ impl MediaKind {
 }
 
 pub fn all_extensions() -> Vec<&'static str> {
-    [IMAGE_EXTENSIONS, GIF_EXTENSIONS, VIDEO_EXTENSIONS, WEB_EXTENSIONS].concat()
+    [
+        IMAGE_EXTENSIONS,
+        GIF_EXTENSIONS,
+        VIDEO_EXTENSIONS,
+        WEB_EXTENSIONS,
+    ]
+    .concat()
 }
 
 #[cfg(test)]
@@ -49,11 +55,26 @@ mod tests {
 
     #[test]
     fn detects_kind_by_extension_ignoring_case() {
-        assert_eq!(MediaKind::from_path(Path::new("/a/photo.JPG")), Some(MediaKind::Image));
-        assert_eq!(MediaKind::from_path(Path::new("x.avif")), Some(MediaKind::Image));
-        assert_eq!(MediaKind::from_path(Path::new("x.gif")), Some(MediaKind::Gif));
-        assert_eq!(MediaKind::from_path(Path::new("matrix wallpaper.Mp4")), Some(MediaKind::Video));
-        assert_eq!(MediaKind::from_path(Path::new("clock/index.html")), Some(MediaKind::Web));
+        assert_eq!(
+            MediaKind::from_path(Path::new("/a/photo.JPG")),
+            Some(MediaKind::Image)
+        );
+        assert_eq!(
+            MediaKind::from_path(Path::new("x.avif")),
+            Some(MediaKind::Image)
+        );
+        assert_eq!(
+            MediaKind::from_path(Path::new("x.gif")),
+            Some(MediaKind::Gif)
+        );
+        assert_eq!(
+            MediaKind::from_path(Path::new("matrix wallpaper.Mp4")),
+            Some(MediaKind::Video)
+        );
+        assert_eq!(
+            MediaKind::from_path(Path::new("clock/index.html")),
+            Some(MediaKind::Web)
+        );
     }
 
     #[test]

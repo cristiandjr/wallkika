@@ -17,12 +17,11 @@ use windows::{
             WindowsAndMessaging::{
                 EnumWindows, FindWindowExW, FindWindowW, GetWindow, GetWindowLongPtrW,
                 SendMessageTimeoutW, SetLayeredWindowAttributes, SetParent, SetWindowLongPtrW,
-                SetWindowPos, ShowWindow, SystemParametersInfoW, GWL_EXSTYLE, GWL_STYLE,
-                GW_CHILD, GW_HWNDLAST, HWND_BOTTOM, LWA_ALPHA, SET_WINDOW_POS_FLAGS,
-                SMTO_NORMAL, SPIF_SENDCHANGE, SPIF_UPDATEINIFILE, SPI_SETDESKWALLPAPER,
-                SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SW_SHOWNOACTIVATE,
-                WS_CHILD, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_NOREDIRECTIONBITMAP,
-                WS_EX_TOOLWINDOW, WS_POPUP,
+                SetWindowPos, ShowWindow, SystemParametersInfoW, GWL_EXSTYLE, GWL_STYLE, GW_CHILD,
+                GW_HWNDLAST, HWND_BOTTOM, LWA_ALPHA, SET_WINDOW_POS_FLAGS, SMTO_NORMAL,
+                SPIF_SENDCHANGE, SPIF_UPDATEINIFILE, SPI_SETDESKWALLPAPER, SWP_NOACTIVATE,
+                SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SW_SHOWNOACTIVATE, WS_CHILD, WS_EX_LAYERED,
+                WS_EX_NOACTIVATE, WS_EX_NOREDIRECTIONBITMAP, WS_EX_TOOLWINDOW, WS_POPUP,
             },
         },
     },
@@ -92,8 +91,8 @@ pub fn attach_live_window(window: &WebviewWindow, display: &DisplayInfo) -> Resu
             GWL_STYLE,
             (style & !(WS_POPUP.0 as isize)) | WS_CHILD.0 as isize,
         );
-        let mut ex_style =
-            GetWindowLongPtrW(hwnd, GWL_EXSTYLE) | (WS_EX_TOOLWINDOW.0 | WS_EX_NOACTIVATE.0) as isize;
+        let mut ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE)
+            | (WS_EX_TOOLWINDOW.0 | WS_EX_NOACTIVATE.0) as isize;
         if host.raised {
             ex_style |= WS_EX_LAYERED.0 as isize;
         }
@@ -162,8 +161,10 @@ fn desktop_host() -> Result<DesktopHost> {
         );
 
         if is_raised_desktop(progman) {
-            let icons = FindWindowExW(Some(progman), None, w!("SHELLDLL_DefView"), PCWSTR::null()).ok();
-            let workerw = retry(|| FindWindowExW(Some(progman), None, w!("WorkerW"), PCWSTR::null()).ok());
+            let icons =
+                FindWindowExW(Some(progman), None, w!("SHELLDLL_DefView"), PCWSTR::null()).ok();
+            let workerw =
+                retry(|| FindWindowExW(Some(progman), None, w!("WorkerW"), PCWSTR::null()).ok());
             return Ok(DesktopHost {
                 parent: progman,
                 icons,
@@ -198,7 +199,10 @@ fn retry(find: impl Fn() -> Option<HWND>) -> Option<HWND> {
 fn classic_workerw() -> Option<HWND> {
     let mut found: Option<HWND> = None;
     unsafe {
-        let _ = EnumWindows(Some(find_workerw), LPARAM(&mut found as *mut Option<HWND> as isize));
+        let _ = EnumWindows(
+            Some(find_workerw),
+            LPARAM(&mut found as *mut Option<HWND> as isize),
+        );
     }
     found
 }

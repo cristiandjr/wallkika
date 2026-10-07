@@ -5,7 +5,9 @@ pub enum Error {
     #[error("File not found: {0}")]
     NotFound(PathBuf),
 
-    #[error("Unsupported format ({0}). Use an image, a GIF, a video (mp4, mov, webm) or an HTML page.")]
+    #[error(
+        "Unsupported format ({0}). Use an image, a GIF, a video (mp4, mov, webm) or an HTML page."
+    )]
     Unsupported(String),
 
     #[error("{0}")]

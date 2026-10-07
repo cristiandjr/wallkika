@@ -10,6 +10,7 @@ export function mediaUrl(path: string): string {
 
 export type MediaKind = "image" | "gif" | "video" | "web";
 export type RenderMode = "native" | "live";
+export type LayoutMode = "mirror" | "perDisplay";
 
 export interface Wallpaper {
   path: string;
@@ -18,7 +19,14 @@ export interface Wallpaper {
   mode: RenderMode;
 }
 
+export interface Layout {
+  mode: LayoutMode;
+  all: Wallpaper | null;
+  displays: Record<string, Wallpaper>;
+}
+
 export interface DisplayInfo {
+  id: string;
   name: string;
   x: number;
   y: number;
@@ -28,29 +36,48 @@ export interface DisplayInfo {
   primary: boolean;
 }
 
+export interface UpdateInfo {
+  version: string;
+  url: string;
+}
+
 export interface Overview {
-  current: Wallpaper | null;
+  layout: Layout;
   displays: DisplayInfo[];
   platform: string;
+  version: string;
+  updateFeed: string | null;
+  update: UpdateInfo | null;
+}
+
+export function liveWallpaperFor(layout: Layout, displayId: string): Wallpaper | null {
+  if (layout.mode === "mirror") return layout.all?.mode === "live" ? layout.all : null;
+  return layout.displays[displayId] ?? null;
 }
 
 export const api = {
   getOverview: () => invoke<Overview>("get_overview"),
-  chooseWallpaper: () => invoke<Wallpaper | null>("choose_wallpaper"),
-  setWallpaper: (path: string) => invoke<Wallpaper>("set_wallpaper", { path }),
-  stopLiveWallpaper: () => invoke<void>("stop_live_wallpaper"),
-  currentWallpaper: () => invoke<Wallpaper | null>("current_wallpaper"),
+  chooseWallpaper: (display: string | null) =>
+    invoke<Wallpaper | null>("choose_wallpaper", { display }),
+  setWallpaper: (path: string, display: string | null) =>
+    invoke<Wallpaper>("set_wallpaper", { path, display }),
+  clearWallpaper: (display: string | null) => invoke<void>("clear_wallpaper", { display }),
+  setLayoutMode: (mode: LayoutMode) => invoke<void>("set_layout_mode", { mode }),
+  getLayout: () => invoke<Layout>("get_layout"),
   reportRenderer: (status: string, detail?: string) =>
     invoke<void>("report_renderer", { status, detail }),
+  reportUpdate: (version: string, url: string) => invoke<void>("report_update", { version, url }),
+  openUpdate: () => invoke<void>("open_update"),
 };
 
 export const events = {
-  onWallpaperChanged: (cb: (wallpaper: Wallpaper | null) => void): Promise<UnlistenFn> =>
-    listen<Wallpaper | null>("wallpaper-changed", (e) => cb(e.payload)),
+  onLayoutChanged: (cb: (layout: Layout) => void): Promise<UnlistenFn> =>
+    listen<Layout>("layout-changed", (e) => cb(e.payload)),
   onDisplaysChanged: (cb: (displays: DisplayInfo[]) => void): Promise<UnlistenFn> =>
     listen<DisplayInfo[]>("displays-changed", (e) => cb(e.payload)),
   onWallpaperError: (cb: (message: string) => void): Promise<UnlistenFn> =>
     listen<string>("wallpaper-error", (e) => cb(e.payload)),
+  onShowAbout: (cb: () => void): Promise<UnlistenFn> => listen("show-about", () => cb()),
 };
 
 export function errorText(error: unknown): string {

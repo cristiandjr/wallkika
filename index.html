@@ -12,11 +12,25 @@
     <main class="app">
       <header class="brand">
         <img class="brand-logo" src="/logo.png" alt="" width="40" height="40" />
-        <div>
+        <div class="brand-text">
           <h1>WallKika</h1>
           <p class="tagline">One wallpaper, every screen</p>
         </div>
+        <button id="about-open" class="icon-button" type="button" title="About WallKika" aria-label="About WallKika">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9.5" />
+            <path d="M12 11v6M12 7.5v.01" />
+          </svg>
+        </button>
       </header>
+
+      <button class="update-banner" id="update-banner" type="button" hidden></button>
+
+      <div class="segmented" role="radiogroup" aria-label="Layout">
+        <button id="mode-mirror" type="button" role="radio" data-mode="mirror">Same on all displays</button>
+        <button id="mode-per-display" type="button" role="radio" data-mode="perDisplay">Per display</button>
+      </div>
 
       <section class="now" aria-labelledby="now-name">
         <div class="preview" id="preview">
@@ -27,7 +41,7 @@
               <path d="M8 21h8M12 17v4" />
               <path d="m7 13 3-3 2 2 3-3 2 2" />
             </svg>
-            <span>No WallKika wallpaper yet</span>
+            <span id="preview-empty-text">No WallKika wallpaper yet</span>
           </div>
         </div>
         <div class="now-info">
@@ -39,25 +53,62 @@
       <section class="actions">
         <button id="choose" class="btn btn-primary" type="button">Choose file…</button>
         <button id="stop" class="btn btn-ghost" type="button" hidden>Stop live wallpaper</button>
-        <p class="hint">or drop a file on this window</p>
+        <p class="hint" id="hint">or drop a file on this window</p>
       </section>
 
       <section class="displays" aria-labelledby="displays-title">
         <h2 class="section-title" id="displays-title">
           Displays <span class="count" id="displays-count"></span>
         </h2>
-        <div class="display-map" id="display-map" aria-hidden="true"></div>
+        <div class="display-map" id="display-map"></div>
         <ul class="display-list" id="display-list"></ul>
       </section>
 
       <footer class="formats">
-        Images (JPG, PNG, HEIC, AVIF, WebP) · GIF · Video (MP4, MOV, WebM) · HTML
+        JPG · PNG · HEIC · AVIF · WebP · GIF · MP4 · MOV · WebM · HTML
+        <span class="background-note" id="background-note"></span>
       </footer>
     </main>
 
     <div class="drop-overlay" id="drop-overlay" hidden>
-      <div class="drop-card">Drop the file to use it as your wallpaper</div>
+      <div class="drop-card" id="drop-text">Drop the file to use it as your wallpaper</div>
     </div>
+
+    <div class="modal-backdrop" id="about" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="about-title">
+        <img class="about-logo" src="/logo.png" alt="" width="72" height="72" />
+        <h2 id="about-title">WallKika</h2>
+        <p class="about-version" id="about-version"></p>
+        <p class="about-bio">
+          Hi! I'm Cristian (cristiandjr), the developer behind WallKika. I build tools I want to use every day
+          and share them for free, so anyone can make their desktop their own.
+        </p>
+        <div class="about-row">
+          <div class="about-info">
+            <span class="about-label">Ideas, bugs and suggestions</span>
+            <span class="about-value">cristiandjr89@gmail.com</span>
+          </div>
+          <button class="btn-small" type="button" data-copy="cristiandjr89@gmail.com">Copy email</button>
+        </div>
+        <div class="about-row">
+          <div class="about-info">
+            <span class="about-label">More projects on GitHub</span>
+            <span class="about-value">github.com/cristiandjr</span>
+          </div>
+          <button class="btn-small" type="button" data-copy="https://github.com/cristiandjr">Copy link</button>
+        </div>
+        <div class="about-row">
+          <div class="about-info">
+            <span class="about-label">Support WallKika with Mercado Pago</span>
+            <span class="about-value">cristiandjr.mp</span>
+          </div>
+          <button class="btn-small" type="button" data-copy="cristiandjr.mp">Copy alias</button>
+        </div>
+        <p class="about-footnote">Free and open source · MIT License</p>
+        <button class="btn btn-ghost" type="button" id="about-close">Close</button>
+      </div>
+    </div>
+
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>

@@ -132,7 +132,7 @@ pub fn attach_live_window(window: &WebviewWindow, display: &DisplayInfo) -> Resu
     Ok(())
 }
 
-pub fn name_displays(_app: &AppHandle, _displays: &mut [DisplayInfo]) {}
+pub fn describe_displays(_app: &AppHandle, _displays: &mut [DisplayInfo]) {}
 
 pub fn after_live_windows_closed() {
     unsafe {

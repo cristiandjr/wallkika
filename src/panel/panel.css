@@ -54,10 +54,10 @@ body {
 .app {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   max-width: 560px;
   margin: 0 auto;
-  padding: 18px 20px 16px;
+  padding: 16px 20px 14px;
 }
 
 .brand {
@@ -98,7 +98,7 @@ h1 {
 
 .preview {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 2 / 1;
   overflow: hidden;
   background: var(--surface-2);
 }
@@ -270,7 +270,7 @@ h1 {
 
 .display-map {
   position: relative;
-  height: 112px;
+  height: 100px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -407,4 +407,243 @@ h1 {
 .toast.error {
   color: #fff;
   background: var(--danger);
+}
+
+.brand-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.icon-button:focus-visible,
+.segmented button:focus-visible,
+.display-item.selectable:focus-visible,
+.btn-small:focus-visible {
+  outline: 2px solid var(--accent-1);
+  outline-offset: 2px;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.segmented button {
+  appearance: none;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  cursor: pointer;
+}
+
+.segmented button[aria-checked="true"] {
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgb(16 24 40 / 0.14);
+}
+
+.display-item.selectable {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.display-item.selectable:hover {
+  background: var(--surface-2);
+}
+
+.display-item.selected {
+  border-color: var(--accent-1);
+  box-shadow: inset 0 0 0 1px var(--accent-1);
+}
+
+.display-body {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.display-assigned {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.screen.selectable {
+  cursor: pointer;
+}
+
+.screen.selected {
+  outline: 2px solid var(--accent-1);
+  outline-offset: 2px;
+}
+
+.background-note {
+  display: block;
+  margin-top: 4px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(8 10 16 / 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.modal {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(380px, 100%);
+  padding: 24px 22px 18px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.about-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  object-fit: cover;
+  box-shadow: var(--shadow);
+}
+
+.modal h2 {
+  margin: 4px 0 0;
+  font-size: 18px;
+}
+
+.about-version,
+.about-footnote {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.about-bio {
+  margin: 2px 0 4px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.about-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--surface-2);
+  border-radius: 12px;
+}
+
+.about-info {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.about-label {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.about-value {
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.btn-small {
+  appearance: none;
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.btn-small:hover {
+  background: var(--bg);
+}
+
+.modal .btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.toast {
+  z-index: 20;
+}
+
+.update-banner {
+  appearance: none;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, var(--accent-1), var(--accent-2)) border-box;
+  cursor: pointer;
+}
+
+.update-banner:hover {
+  background:
+    linear-gradient(var(--surface-2), var(--surface-2)) padding-box,
+    linear-gradient(135deg, var(--accent-1), var(--accent-2)) border-box;
 }

@@ -10,11 +10,11 @@
 
 <p align="center">
   <b>Un fondo, todas tus pantallas.</b><br>
-  Elige una imagen, un GIF, un video o una página HTML y WallKika lo pone detrás de los íconos del escritorio en cada pantalla, en loop infinito.
+  Elige una imagen, un GIF, un video o una página HTML y WallKika lo pone detrás de los íconos del escritorio: el mismo en todas las pantallas o uno distinto en cada una.
 </p>
 
 <p align="center">
-  <img alt="Versión 0.1.0" src="https://img.shields.io/badge/versi%C3%B3n-0.1.0-7b5cff">
+  <img alt="Versión 0.2.0" src="https://img.shields.io/badge/versi%C3%B3n-0.2.0-7b5cff">
   <img alt="Estado: preview" src="https://img.shields.io/badge/estado-preview-ff5c8a">
   <img alt="Hecho con Tauri 2 y Rust" src="https://img.shields.io/badge/hecho%20con-Tauri%202%20%2B%20Rust-24c8db">
   <img alt="Licencia: MIT" src="https://img.shields.io/badge/licencia-MIT-2ea44f">
@@ -31,19 +31,32 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/panel-live-dark.png" width="360" alt="Panel de control con un video en loop en dos pantallas, modo oscuro">
+  <img src="docs/screenshots/panel-per-display-dark.png" width="360" alt="Modo por pantalla: un video en la pantalla principal y una imagen en la de la notebook, modo oscuro">
   &nbsp;&nbsp;
-  <img src="docs/screenshots/panel-image-light.png" width="360" alt="Panel de control con una imagen como fondo del sistema, modo claro">
+  <img src="docs/screenshots/panel-mirror-light.png" width="360" alt="Modo igual en todas las pantallas con una imagen como fondo del sistema, modo claro">
 </p>
 
-## Funciones
+## Qué puede hacer WallKika
 
-- **Todas las pantallas, automáticamente.** Replica el fondo en todas las pantallas conectadas, incluso con combinaciones como Retina + 1080p. Si conectas un monitor, en 2 segundos ya tiene el fondo.
-- **Videos que nunca se cortan.** MP4, M4V, MOV y WebM en loop infinito, sin sonido y detrás de tus íconos. Da igual si el video dura 2 minutos o 2 horas: se reproduce por streaming, nunca se carga entero en memoria.
-- **Imágenes sin consumo.** JPG, PNG, HEIC, AVIF, WebP, BMP y TIFF usan el fondo nativo del sistema, así que no gastan CPU y siguen ahí aunque cierres la app.
-- **GIFs y páginas web.** Usa un GIF o cualquier página HTML (un reloj, un shader, un dashboard) como fondo animado. Las páginas corren aisladas.
-- **No molesta.** Controles en la barra de menú o bandeja, arrastrar y soltar, y línea de comandos (`wallkika video.mp4`). Cerrar el panel no cierra la app, y el último fondo animado vuelve al abrirla.
-- **Liviana.** Unos 25 MB de RAM para el núcleo y cerca del 12% de un núcleo de CPU con un video 1080p en dos pantallas (Apple M2).
+- [x] El mismo fondo en todas las pantallas, o uno distinto en cada pantalla
+- [x] Imágenes (JPG, PNG, HEIC, AVIF, WebP, BMP, TIFF) con el fondo nativo del sistema, sin consumo
+- [x] Videos (MP4, M4V, MOV, WebM) en loop infinito y sin sonido, de clips de 2 minutos a archivos de 2 horas (por streaming, nunca se cargan enteros en memoria)
+- [x] GIFs y páginas HTML (relojes, shaders, dashboards) como fondos animados, aislados
+- [x] Pantallas con distinta densidad (Retina + 1080p) y conexión en caliente: un monitor nuevo recibe su fondo en 2 segundos
+- [x] Funciona en segundo plano: al cerrar la ventana, WallKika queda en la barra de menú / bandeja del sistema, fuera de Cmd+Tab, Alt+Tab, el Dock y la barra de tareas
+- [x] Recuerda tus fondos entre reinicios
+- [x] Arrastrar y soltar, y línea de comandos: `wallkika archivo`, `--display N`, `--background`
+- [x] Avisa en el menú y en la ventana cuando sale una versión nueva
+- [x] Panel "About" con datos de contacto y apoyo
+- [x] Modo claro y oscuro
+- [x] Descargas portables para macOS, Windows y Linux
+- [ ] Todos los formatos de video (MKV, AVI, WMV, FLV…) convirtiéndolos automáticamente con ffmpeg
+- [ ] Abrir al iniciar sesión
+- [ ] Modos de ajuste (cubrir, contener, estirar), listas de reproducción y horarios
+- [ ] Pausar con apps en pantalla completa o con batería
+- [ ] Versiones firmadas (notarización de Apple, firma de código en Windows)
+- [ ] Decodificadores nativos que decodifiquen un video una sola vez para todas las pantallas
+- [ ] Soporte de Wayland layer-shell e interfaz en español
 
 ## Descarga
 
@@ -55,7 +68,7 @@ WallKika es portable: no hay nada que instalar. Descarga el archivo de tu sistem
 | Windows 10 / 11 | `WallKika-Windows-x64.exe` | Doble clic para abrirla; si quieres, ánclala a la barra de tareas o al Inicio. SmartScreen puede avisar que el editor es desconocido: **Más información → Ejecutar de todas formas**. Necesita Microsoft Edge WebView2, que ya viene en Windows 11 y en Windows 10 actualizado. |
 | Linux | `WallKika-Linux-x86_64.AppImage` | `chmod +x WallKika-Linux-x86_64.AppImage` y ejecútala. Algunas distribuciones necesitan `libfuse2` para abrir AppImages. |
 
-## Estado: v0.1.0 preview
+## Estado: v0.2.0 preview
 
 | Plataforma | Imágenes fijas | Fondos animados | Probado en hardware real |
 | --- | --- | --- | --- |
@@ -65,6 +78,15 @@ WallKika es portable: no hay nada que instalar. Descarga el archivo de tu sistem
 
 Si usas Windows o Linux, tu ayuda probando vale oro. Mira [Cómo contribuir](#cómo-contribuir).
 
+## Uso
+
+- **Igual en todas las pantallas**: elige un archivo o arrástralo a la ventana y todas las pantallas lo muestran.
+- **Por pantalla**: elige una pantalla en el mapa o en la lista y después un archivo para ella. Cada pantalla conserva su fondo; las que no tienen uno muestran el fondo del sistema.
+- **Barra de menú / bandeja**: abrir WallKika, quitar los fondos animados, ver el About, descargar una versión nueva cuando sale o salir. Cerrar la ventana solo la oculta; **Quit** cierra WallKika por completo.
+- **Línea de comandos**: `wallkika video.mp4` lo pone en todas las pantallas, `wallkika --display 2 foto.jpg` lo pone en la pantalla 2, y `wallkika --background` abre u oculta WallKika sin su ventana.
+
+La configuración se guarda en la carpeta de la app (`~/Library/Application Support/com.cristiandjr.wallkika/` en macOS). Los logs están en `~/Library/Logs/com.cristiandjr.wallkika/`.
+
 ## Cómo funciona
 
 ```mermaid
@@ -72,20 +94,20 @@ flowchart LR
     Panel["Panel<br/>(TypeScript)"] -->|comandos| Engine
     Tray["Barra de menú / bandeja"] --> Engine
     CLI["wallkika archivo.mp4"] --> Engine
-    Engine["Núcleo en Rust"] -->|imagen| Native["Fondo nativo del sistema"]
-    Engine -->|"video · GIF · HTML"| Live["Una ventana por pantalla<br/>detrás de los íconos"]
-    Live -->|"wallkika:// por rangos"| Files[("El archivo que elegiste")]
+    Engine["Núcleo en Rust"] -->|"imagen en todas las pantallas"| Native["Fondo nativo del sistema"]
+    Engine -->|"video · GIF · HTML · por pantalla"| Live["Una ventana por pantalla<br/>detrás de los íconos"]
+    Live -->|"wallkika:// por rangos"| Files[("Los archivos que elegiste")]
 ```
 
-Las imágenes fijas usan la API nativa de cada sistema: `NSWorkspace` en macOS, `IDesktopWallpaper` en Windows, y en Linux `gsettings`, `plasma-apply-wallpaperimage`, `xfconf-query`, `swww` o `feh`, según el escritorio.
+Las imágenes fijas en todas las pantallas usan la API nativa de cada sistema: `NSWorkspace` en macOS, `IDesktopWallpaper` en Windows, y en Linux `gsettings`, `plasma-apply-wallpaperimage`, `xfconf-query`, `swww` o `feh`, según el escritorio.
 
-Los fondos animados son ventanas sin bordes, una por pantalla, ubicadas donde vive el fondo del escritorio:
+Todo lo demás lo dibujan ventanas sin bordes, una por pantalla, ubicadas donde vive el fondo del escritorio:
 
 - **macOS**: el nivel de ventana de escritorio de CoreGraphics, en todos los Spaces y sin capturar el mouse.
 - **Windows**: dentro del `WorkerW` de Explorer en el escritorio clásico, o dentro de `Progman` justo debajo de los íconos en el escritorio de 24H2+.
 - **Linux**: ventanas X11 de tipo `_NET_WM_WINDOW_TYPE_DESKTOP`; las sesiones Wayland corren con XWayland.
 
-Los archivos llegan a esas ventanas por un protocolo propio, `wallkika://`, que sirve rangos exactos de bytes. Por eso los videos enormes se reproducen fluidos.
+Cada ventana reconoce su pantalla por un ID de hardware estable, así que la configuración por pantalla sobrevive aunque reordenes los monitores. Los archivos llegan a las ventanas por un protocolo propio, `wallkika://`, que sirve rangos exactos de bytes; por eso los videos enormes se reproducen fluidos. Si una ventana no carga, se vuelve a crear sola.
 
 ## Compilar desde el código
 
@@ -101,14 +123,6 @@ npm run package       # versión portable para tu sistema, en release/
 
 En macOS, `npm run package` genera una app universal, así que necesita los dos targets de Rust: `rustup target add aarch64-apple-darwin x86_64-apple-darwin`. Con `MAC_TARGET=aarch64-apple-darwin` compila solo para Apple Silicon, más rápido.
 
-## Uso
-
-- **Panel**: haz clic en **Choose file…** o arrastra un archivo a la ventana.
-- **Barra de menú / bandeja**: elige un fondo, quita el fondo animado o sal de la app.
-- **Línea de comandos**: `wallkika /ruta/al/video.mp4` le pasa el archivo a la instancia abierta.
-
-La configuración se guarda en la carpeta de la app (`~/Library/Application Support/com.cristiandjr.wallkika/` en macOS). Los logs están en `~/Library/Logs/com.cristiandjr.wallkika/`.
-
 ## Estructura del proyecto
 
 ```
@@ -117,9 +131,11 @@ src/
   wallpaper/            renderer que se carga en cada ventana de fondo
   shared/api.ts         puente tipado con los comandos y eventos de Rust
 src-tauri/src/
-  engine.rs             decide nativo o animado y maneja las ventanas por pantalla
-  display.rs            lista de pantallas y detección de cambios
+  engine.rs             aplica los fondos y maneja una ventana por pantalla
+  layout.rs             modelo de "igual en todas" vs "por pantalla"
+  display.rs            lista de pantallas, IDs estables y detección de cambios
   protocol.rs           protocolo wallkika:// (rangos de bytes + lista de permitidos)
+  updates.rs            aviso de versión nueva (releases de GitHub)
   platform/             macos.rs · windows.rs · linux.rs
   commands.rs · tray.rs · settings.rs · media.rs · error.rs
 scripts/
@@ -134,20 +150,8 @@ scripts/
 
 - Las ventanas de fondo solo pueden leer los archivos que elegiste (y la carpeta de un fondo HTML) a través de `wallkika://`. Todo lo demás se rechaza.
 - Los fondos HTML corren en un iframe aislado, sin acceso a la API de la app.
-- Content Security Policy estricta, permisos mínimos de Tauri, sin contenido remoto y sin telemetría.
-
-## Hoja de ruta
-
-- [ ] Todos los formatos de video (MKV, AVI, WMV, FLV…) convirtiéndolos automáticamente con ffmpeg
-- [ ] Pruebas en hardware con Windows y Linux
-- [ ] Notarización de Apple y firma de código en Windows, actualizaciones automáticas
-- [ ] Abrir al iniciar sesión
-- [ ] Un fondo distinto por pantalla y modos de ajuste (cubrir, contener, estirar)
-- [ ] Listas de reproducción y horarios
-- [ ] Pausar con apps en pantalla completa o con batería
-- [ ] Decodificadores nativos (AVPlayer, Media Foundation, mpv) que decodifiquen una sola vez para todas las pantallas
-- [ ] Soporte de Wayland layer-shell
-- [ ] Interfaz en español
+- Content Security Policy estricta y permisos mínimos de Tauri. Sin telemetría.
+- WallKika hace un solo pedido de red: consulta la última release de este repositorio en GitHub, al abrir y cada 12 horas. El link de actualización solo abre páginas de releases de este repositorio. Las páginas HTML que agregues como fondo pueden cargar su propio contenido.
 
 ## Cómo contribuir
 
@@ -166,7 +170,11 @@ Estilo de código: todo en inglés, nombres que se expliquen solos y comentarios
 
 1. Actualiza `version` en `package.json` y `src-tauri/Cargo.toml`.
 2. Sube un tag: `git tag v0.2.0 && git push origin v0.2.0`.
-3. El [workflow de Release](.github/workflows/release.yml) compila macOS, Windows y Linux y los publica en Releases. Los botones de descarga siempre apuntan a la última versión.
+3. El [workflow de Release](.github/workflows/release.yml) compila macOS, Windows y Linux y los publica en Releases. Los botones de descarga siempre apuntan a la última versión, y las copias de WallKika que estén abiertas avisan que hay una nueva.
+
+## Autor
+
+Hecho por **Cristian** · [github.com/cristiandjr](https://github.com/cristiandjr) · ideas y sugerencias: cristiandjr89@gmail.com
 
 ## Apoya el proyecto
 

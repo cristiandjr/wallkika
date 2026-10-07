@@ -10,11 +10,11 @@
 
 <p align="center">
   <b>One wallpaper, every screen.</b><br>
-  Pick an image, a GIF, a video or an HTML page and WallKika puts it behind your desktop icons on every display, looping forever.
+  Pick an image, a GIF, a video or an HTML page and WallKika puts it behind your desktop icons: the same on every display, or a different one on each.
 </p>
 
 <p align="center">
-  <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-7b5cff">
+  <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-7b5cff">
   <img alt="Status: preview" src="https://img.shields.io/badge/status-preview-ff5c8a">
   <img alt="Built with Tauri 2 and Rust" src="https://img.shields.io/badge/built%20with-Tauri%202%20%2B%20Rust-24c8db">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2ea44f">
@@ -31,19 +31,32 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/panel-live-dark.png" width="360" alt="Control panel showing a looping video on two displays, dark mode">
+  <img src="docs/screenshots/panel-per-display-dark.png" width="360" alt="Per display mode: a video on the main display and an image on the laptop screen, dark mode">
   &nbsp;&nbsp;
-  <img src="docs/screenshots/panel-image-light.png" width="360" alt="Control panel showing a static image as system wallpaper, light mode">
+  <img src="docs/screenshots/panel-mirror-light.png" width="360" alt="Same on all displays mode with an image as system wallpaper, light mode">
 </p>
 
-## Features
+## What WallKika can do
 
-- **Every display, automatically.** Mirrors the wallpaper on all connected screens, including mixed setups (Retina + 1080p). Plug in a monitor and it's covered within 2 seconds.
-- **Videos that never stop.** MP4, M4V, MOV and WebM loop forever, muted, behind your icons. A 2-minute clip or a 2-hour file both work: videos are streamed, never loaded into memory.
-- **Images at zero cost.** JPG, PNG, HEIC, AVIF, WebP, BMP and TIFF go through the system wallpaper API, so they use no CPU and stay after you quit.
-- **GIFs and web pages.** Use a GIF or any HTML page (a clock, a shader, a dashboard) as a live wallpaper. Pages run sandboxed.
-- **Stays out of the way.** Menu bar / tray controls, drag and drop, and a CLI (`wallkika video.mp4`). Closing the panel keeps it running, and the last live wallpaper comes back on startup.
-- **Light on resources.** About 25 MB of RAM for the core and roughly 12% of one CPU core for a 1080p video on two displays (Apple M2).
+- [x] The same wallpaper on every display, or a different one on each display
+- [x] Images (JPG, PNG, HEIC, AVIF, WebP, BMP, TIFF) through the system wallpaper API, at zero cost
+- [x] Videos (MP4, M4V, MOV, WebM) looping forever and muted, from 2-minute clips to 2-hour files (streamed, never loaded into memory)
+- [x] GIFs and HTML pages (clocks, shaders, dashboards) as live wallpapers, sandboxed
+- [x] Mixed setups (Retina + 1080p) and hot-plug: a new monitor is covered within 2 seconds
+- [x] Runs in the background: closing the window leaves WallKika in the menu bar / system tray, out of Cmd+Tab, Alt+Tab, the Dock and the taskbar
+- [x] Remembers your wallpapers between restarts
+- [x] Drag and drop, plus a command line: `wallkika file`, `--display N`, `--background`
+- [x] Tells you in the menu and in the window when a new version is out
+- [x] About panel with contact and support details
+- [x] Light and dark mode
+- [x] Portable downloads for macOS, Windows and Linux
+- [ ] Every video format (MKV, AVI, WMV, FLV…) through automatic ffmpeg conversion
+- [ ] Launch at login
+- [ ] Fit modes (cover, contain, stretch), playlists and schedules
+- [ ] Pause while a fullscreen app is active or on battery
+- [ ] Signed releases (Apple notarization, Windows code signing)
+- [ ] Native decoders that decode a video once for all displays
+- [ ] Wayland layer-shell support and a Spanish UI
 
 ## Download
 
@@ -55,7 +68,7 @@ WallKika is portable: there is nothing to install. Grab the file for your system
 | Windows 10 / 11 | `WallKika-Windows-x64.exe` | Double-click to run, then pin it to the taskbar or Start if you like. SmartScreen may warn about an unknown publisher: **More info → Run anyway**. Needs Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already include. |
 | Linux | `WallKika-Linux-x86_64.AppImage` | `chmod +x WallKika-Linux-x86_64.AppImage` and run it. Some distributions need `libfuse2` to open AppImages. |
 
-## Status: v0.1.0 preview
+## Status: v0.2.0 preview
 
 | Platform | Static images | Live wallpapers | Tested on real hardware |
 | --- | --- | --- | --- |
@@ -65,6 +78,15 @@ WallKika is portable: there is nothing to install. Grab the file for your system
 
 Windows and Linux testers are very welcome. See [Contributing](#contributing).
 
+## Usage
+
+- **Same on all displays**: choose a file or drop it on the window and every display shows it.
+- **Per display**: pick a display in the map or in the list, then choose a file for it. Each display keeps its own wallpaper; displays without one show the system wallpaper.
+- **Menu bar / tray**: open WallKika, stop the live wallpapers, see About, download a new version when one is out, or quit. Closing the window only hides it; **Quit** closes WallKika completely.
+- **Command line**: `wallkika video.mp4` sets it on every display, `wallkika --display 2 photo.jpg` sets it on display 2, and `wallkika --background` starts or hides WallKika without its window.
+
+Settings live in the app config folder (`~/Library/Application Support/com.cristiandjr.wallkika/` on macOS). Logs are in `~/Library/Logs/com.cristiandjr.wallkika/`.
+
 ## How it works
 
 ```mermaid
@@ -72,20 +94,20 @@ flowchart LR
     Panel["Panel<br/>(TypeScript)"] -->|commands| Engine
     Tray["Menu bar / tray"] --> Engine
     CLI["wallkika file.mp4"] --> Engine
-    Engine["Rust core"] -->|image| Native["System wallpaper API"]
-    Engine -->|"video · GIF · HTML"| Live["One window per display<br/>behind the desktop icons"]
-    Live -->|"wallkika:// with byte ranges"| Files[("The file you picked")]
+    Engine["Rust core"] -->|"image on every display"| Native["System wallpaper API"]
+    Engine -->|"video · GIF · HTML · per display"| Live["One window per display<br/>behind the desktop icons"]
+    Live -->|"wallkika:// with byte ranges"| Files[("The files you picked")]
 ```
 
-Static images use the native API of each system: `NSWorkspace` on macOS, `IDesktopWallpaper` on Windows, and `gsettings`, `plasma-apply-wallpaperimage`, `xfconf-query`, `swww` or `feh` on Linux, depending on the desktop.
+Static images on every display use the native API of each system: `NSWorkspace` on macOS, `IDesktopWallpaper` on Windows, and `gsettings`, `plasma-apply-wallpaperimage`, `xfconf-query`, `swww` or `feh` on Linux, depending on the desktop.
 
-Live wallpapers are borderless webview windows, one per display, placed where the desktop wallpaper lives:
+Everything else is drawn by borderless webview windows, one per display, placed where the desktop wallpaper lives:
 
 - **macOS**: the CoreGraphics desktop window level, on every Space, ignoring the mouse.
 - **Windows**: reparented into Explorer's `WorkerW` on the classic desktop, or into `Progman` just below the icons on the 24H2+ desktop.
 - **Linux**: X11 windows of type `_NET_WM_WINDOW_TYPE_DESKTOP`; Wayland sessions run through XWayland.
 
-Media reaches those windows through a custom `wallkika://` protocol that serves exact byte ranges. That lets huge videos stream smoothly.
+Each window knows its display through a stable hardware ID, so per-display choices survive rearranging monitors. Media reaches the windows through a custom `wallkika://` protocol that serves exact byte ranges, which lets huge videos stream smoothly. A window that fails to load is recreated automatically.
 
 ## Build from source
 
@@ -101,14 +123,6 @@ npm run package       # portable build for your OS, written to release/
 
 On macOS, `npm run package` builds a universal app, so it needs both Rust targets: `rustup target add aarch64-apple-darwin x86_64-apple-darwin`. Set `MAC_TARGET=aarch64-apple-darwin` for a faster, Apple Silicon only build.
 
-## Usage
-
-- **Panel**: click **Choose file…** or drop a file on the window.
-- **Menu bar / tray**: choose a wallpaper, stop the live wallpaper, or quit.
-- **Command line**: `wallkika /path/to/video.mp4` sends the file to the running instance.
-
-Settings live in the app config folder (`~/Library/Application Support/com.cristiandjr.wallkika/` on macOS). Logs are in `~/Library/Logs/com.cristiandjr.wallkika/`.
-
 ## Project structure
 
 ```
@@ -117,9 +131,11 @@ src/
   wallpaper/            renderer loaded in every per-display window
   shared/api.ts         typed bridge to the Rust commands and events
 src-tauri/src/
-  engine.rs             decides native vs live, manages per-display windows
-  display.rs            display list and hot-plug watcher
+  engine.rs             applies wallpapers and manages one window per display
+  layout.rs             mirror vs per-display model
+  display.rs            display list, stable IDs and hot-plug watcher
   protocol.rs           wallkika:// media protocol (byte ranges + allowlist)
+  updates.rs            new-version notice (GitHub releases)
   platform/             macos.rs · windows.rs · linux.rs
   commands.rs · tray.rs · settings.rs · media.rs · error.rs
 scripts/
@@ -134,20 +150,8 @@ scripts/
 
 - Wallpaper windows can only read files you picked, plus the folder of an HTML wallpaper, through `wallkika://`. Everything else is rejected.
 - HTML wallpapers run in a sandboxed iframe with no access to the app API.
-- Strict Content Security Policy, minimal Tauri permissions, no remote content, no telemetry.
-
-## Roadmap
-
-- [ ] Every video format (MKV, AVI, WMV, FLV…) through automatic ffmpeg remuxing or transcoding
-- [ ] Testing on Windows and Linux hardware
-- [ ] Apple notarization and Windows code signing, auto-update
-- [ ] Launch at login
-- [ ] A different wallpaper per display, and fit modes (cover, contain, stretch)
-- [ ] Playlists and schedules
-- [ ] Pause while a fullscreen app is active or on battery
-- [ ] Native decoders (AVPlayer, Media Foundation, mpv) that decode once for all displays
-- [ ] Wayland layer-shell support
-- [ ] Spanish UI
+- Strict Content Security Policy and minimal Tauri permissions. No telemetry.
+- WallKika itself makes a single network request: a check of this repository's latest GitHub release, at launch and every 12 hours. The update link only opens release pages of this repository. HTML wallpapers you add may load their own content.
 
 ## Contributing
 
@@ -166,7 +170,11 @@ Code style: English everywhere, self-explanatory names, and comments only when s
 
 1. Bump `version` in `package.json` and `src-tauri/Cargo.toml`.
 2. Push a tag: `git tag v0.2.0 && git push origin v0.2.0`.
-3. The [Release workflow](.github/workflows/release.yml) builds macOS, Windows and Linux and publishes them on the Releases page. The download buttons always point to the latest release.
+3. The [Release workflow](.github/workflows/release.yml) builds macOS, Windows and Linux and publishes them on the Releases page. The download buttons always point to the latest release, and running copies of WallKika announce it.
+
+## Author
+
+Made by **Cristian** · [github.com/cristiandjr](https://github.com/cristiandjr) · ideas and suggestions: cristiandjr89@gmail.com
 
 ## Support the project
 

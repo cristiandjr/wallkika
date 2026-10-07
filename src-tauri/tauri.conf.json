@@ -12,7 +12,7 @@
   "app": {
     "windows": [],
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' wallkika: http://wallkika.localhost data: blob:; media-src 'self' wallkika: http://wallkika.localhost blob:; frame-src wallkika: http://wallkika.localhost; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self' ipc: http://ipc.localhost; connect-src 'self' ipc: http://ipc.localhost https://api.github.com; img-src 'self' wallkika: http://wallkika.localhost data: blob:; media-src 'self' wallkika: http://wallkika.localhost blob:; frame-src wallkika: http://wallkika.localhost; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {

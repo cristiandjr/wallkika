@@ -215,7 +215,7 @@ pub fn attach_live_window(window: &WebviewWindow, display: &DisplayInfo) -> Resu
 
 pub fn after_live_windows_closed() {}
 
-pub fn name_displays(_app: &AppHandle, _displays: &mut [DisplayInfo]) {}
+pub fn describe_displays(_app: &AppHandle, _displays: &mut [DisplayInfo]) {}
 
 fn run(program: &str, args: &[&str]) -> Result<()> {
     output(program, args).map(|_| ())

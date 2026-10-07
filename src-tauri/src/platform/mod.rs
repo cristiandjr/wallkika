@@ -16,7 +16,7 @@ use self::macos as imp;
 use self::windows as imp;
 
 pub use imp::{
-    after_live_windows_closed, attach_live_window, name_displays, prepare_process,
+    after_live_windows_closed, attach_live_window, describe_displays, prepare_process,
     set_static_wallpaper,
 };
 

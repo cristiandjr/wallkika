@@ -1,22 +1,37 @@
-use crate::engine::Wallpaper;
+use crate::layout::{Layout, Wallpaper};
 use serde::{Deserialize, Serialize};
 use std::{fs, io, path::Path};
 
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
-    pub current: Option<Wallpaper>,
+    pub layout: Layout,
+    #[serde(skip_serializing)]
+    current: Option<Wallpaper>,
 }
 
 impl Settings {
+    pub fn new(layout: Layout) -> Self {
+        Self {
+            layout,
+            current: None,
+        }
+    }
+
     pub fn load(path: &Path) -> Self {
         let Ok(text) = fs::read_to_string(path) else {
             return Self::default();
         };
-        serde_json::from_str(&text).unwrap_or_else(|err| {
+        let mut settings: Self = serde_json::from_str(&text).unwrap_or_else(|err| {
             log::warn!("Ignoring unreadable {}: {err}", path.display());
             Self::default()
-        })
+        });
+        if let Some(legacy) = settings.current.take() {
+            if settings.layout == Layout::default() {
+                settings.layout.all = Some(legacy);
+            }
+        }
+        settings
     }
 
     pub fn save(&self, path: &Path) -> io::Result<()> {
@@ -32,7 +47,10 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{engine::RenderMode, media::MediaKind};
+    use crate::{
+        layout::{LayoutMode, RenderMode},
+        media::MediaKind,
+    };
     use std::path::PathBuf;
 
     fn temp_dir(test: &str) -> PathBuf {
@@ -41,20 +59,39 @@ mod tests {
         dir
     }
 
+    fn video() -> Wallpaper {
+        Wallpaper {
+            path: PathBuf::from("/wallpapers/matrix.mp4"),
+            name: "matrix.mp4".into(),
+            kind: MediaKind::Video,
+            mode: RenderMode::Live,
+        }
+    }
+
     #[test]
     fn roundtrip() {
         let dir = temp_dir("roundtrip");
         let path = dir.join("settings.json");
-        let settings = Settings {
-            current: Some(Wallpaper {
-                path: PathBuf::from("/wallpapers/matrix.mp4"),
-                name: "matrix.mp4".into(),
-                kind: MediaKind::Video,
-                mode: RenderMode::Live,
-            }),
+        let mut layout = Layout {
+            mode: LayoutMode::PerDisplay,
+            ..Layout::default()
         };
+        layout.displays.insert("display-a".into(), video());
+        let settings = Settings::new(layout);
         settings.save(&path).unwrap();
         assert_eq!(Settings::load(&path), settings);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn migrates_the_v0_1_format() {
+        let dir = temp_dir("migrate");
+        let path = dir.join("settings.json");
+        let legacy = r#"{ "current": { "path": "/wallpapers/matrix.mp4", "name": "matrix.mp4", "kind": "video", "mode": "live" } }"#;
+        fs::write(&path, legacy).unwrap();
+        let settings = Settings::load(&path);
+        assert_eq!(settings.layout.mode, LayoutMode::Mirror);
+        assert_eq!(settings.layout.all, Some(video()));
         fs::remove_dir_all(dir).unwrap();
     }
 

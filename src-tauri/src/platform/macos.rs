@@ -15,7 +15,14 @@ use tauri::{AppHandle, WebviewWindow};
 #[link(name = "CoreGraphics", kind = "framework")]
 extern "C" {
     fn CGWindowLevelForKey(key: i32) -> i32;
+    fn CGGetActiveDisplayList(max: u32, displays: *mut u32, count: *mut u32) -> i32;
+    fn CGDisplayBounds(display: u32) -> NSRect;
+    fn CGDisplayVendorNumber(display: u32) -> u32;
+    fn CGDisplayModelNumber(display: u32) -> u32;
+    fn CGDisplaySerialNumber(display: u32) -> u32;
 }
+
+const MAX_DISPLAYS: usize = 32;
 
 const CG_DESKTOP_WINDOW_LEVEL_KEY: i32 = 2;
 
@@ -81,13 +88,52 @@ pub fn attach_live_window(window: &WebviewWindow, display: &DisplayInfo) -> Resu
 
 pub fn after_live_windows_closed() {}
 
-pub fn name_displays(app: &AppHandle, displays: &mut [DisplayInfo]) {
+pub fn describe_displays(app: &AppHandle, displays: &mut [DisplayInfo]) {
     let rects: Vec<_> = displays.iter().map(DisplayInfo::logical_rect).collect();
+    let ids = hardware_ids(&rects);
     let names = on_main_thread(app, move || screen_names(&rects)).unwrap_or_default();
-    for (display, name) in displays.iter_mut().zip(names) {
-        if let Some(name) = name {
-            display.name = name;
+    for (index, display) in displays.iter_mut().enumerate() {
+        if let Some(Some(name)) = names.get(index) {
+            display.name = name.clone();
         }
+        if let Some(Some(id)) = ids.get(index) {
+            display.id = id.clone();
+        }
+    }
+}
+
+fn hardware_ids(rects: &[(f64, f64, f64, f64)]) -> Vec<Option<String>> {
+    let mut active = [0u32; MAX_DISPLAYS];
+    let mut count = 0u32;
+    if unsafe { CGGetActiveDisplayList(MAX_DISPLAYS as u32, active.as_mut_ptr(), &mut count) } != 0
+    {
+        return Vec::new();
+    }
+    let active = &active[..count as usize];
+    rects
+        .iter()
+        .map(|&(x, y, width, height)| {
+            let wanted = NSRect::new(NSPoint::new(x, y), NSSize::new(width, height));
+            active
+                .iter()
+                .find(|&&display| same_rect(unsafe { CGDisplayBounds(display) }, wanted))
+                .map(|&display| hardware_id(display, x, y))
+        })
+        .collect()
+}
+
+fn hardware_id(display: u32, x: f64, y: f64) -> String {
+    let (vendor, model, serial) = unsafe {
+        (
+            CGDisplayVendorNumber(display),
+            CGDisplayModelNumber(display),
+            CGDisplaySerialNumber(display),
+        )
+    };
+    if serial == 0 {
+        format!("{vendor:x}-{model:x}@{x},{y}")
+    } else {
+        format!("{vendor:x}-{model:x}-{serial:x}")
     }
 }
 

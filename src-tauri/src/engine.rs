@@ -1,37 +1,34 @@
 use crate::{
     display::{self, DisplayInfo},
     error::{Error, Result},
+    layout::{Layout, LayoutMode, RenderMode, Wallpaper},
     media::MediaKind,
     platform,
     protocol::MediaScope,
     settings::Settings,
 };
-use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashSet,
     path::{Path, PathBuf},
     sync::{Mutex, MutexGuard, PoisonError},
+    time::{Duration, Instant},
 };
-use tauri::{
-    webview::Color, AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
-};
+use tauri::{webview::Color, AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
-pub const WALLPAPER_CHANGED: &str = "wallpaper-changed";
+pub const LAYOUT_CHANGED: &str = "layout-changed";
 const LIVE_LABEL_PREFIX: &str = "wallpaper-";
+const READY_TIMEOUT: Duration = Duration::from_secs(10);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum RenderMode {
-    Native,
-    Live,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Target {
+    All,
+    Display(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Wallpaper {
-    pub path: PathBuf,
-    pub name: String,
-    pub kind: MediaKind,
-    pub mode: RenderMode,
+impl From<Option<String>> for Target {
+    fn from(display: Option<String>) -> Self {
+        display.map_or(Self::All, Self::Display)
+    }
 }
 
 pub struct Engine {
@@ -42,29 +39,49 @@ pub struct Engine {
 
 #[derive(Default)]
 struct State {
-    current: Option<Wallpaper>,
-    live_displays: Option<Vec<DisplayInfo>>,
-    generation: u64,
+    layout: Layout,
+    live: Vec<LiveWindow>,
+    ready: HashSet<String>,
+    next_label: u64,
+}
+
+#[derive(Clone)]
+struct LiveWindow {
+    label: String,
+    display: DisplayInfo,
+    created: Instant,
 }
 
 impl Engine {
     pub fn new(settings_path: PathBuf) -> Self {
-        let current = Settings::load(&settings_path).current;
+        let layout = Settings::load(&settings_path).layout;
         Self {
             ops: Mutex::new(()),
             state: Mutex::new(State {
-                current,
+                layout,
                 ..State::default()
             }),
             settings_path,
         }
     }
 
-    pub fn current(&self) -> Option<Wallpaper> {
-        lock(&self.state).current.clone()
+    pub fn layout(&self) -> Layout {
+        lock(&self.state).layout.clone()
     }
 
-    pub fn apply(&self, app: &AppHandle, path: &Path) -> Result<Wallpaper> {
+    pub fn mark_ready(&self, label: &str) {
+        lock(&self.state).ready.insert(label.to_string());
+    }
+
+    pub fn display_name_of(&self, label: &str) -> Option<String> {
+        lock(&self.state)
+            .live
+            .iter()
+            .find(|window| window.label == label)
+            .map(|window| window.display.name.clone())
+    }
+
+    pub fn apply(&self, app: &AppHandle, path: &Path, target: &Target) -> Result<Wallpaper> {
         let _op = lock(&self.ops);
         let path = path
             .canonicalize()
@@ -76,144 +93,181 @@ impl Engine {
             .ok_or_else(|| Error::Unsupported(describe_extension(&path)))?;
         allow_media_access(app, &path, kind);
 
-        let mode = if kind.is_static() {
-            match platform::set_static_wallpaper(app, &path) {
+        let mode = match target {
+            Target::All if kind.is_static() => match platform::set_static_wallpaper(app, &path) {
                 Ok(()) => RenderMode::Native,
                 Err(err) => {
                     log::warn!("The OS rejected the image ({err}); rendering it with WallKika");
                     RenderMode::Live
                 }
-            }
-        } else {
-            RenderMode::Live
+            },
+            _ => RenderMode::Live,
         };
-
         let wallpaper = Wallpaper {
             name: file_name(&path),
             path,
             kind,
             mode,
         };
-        // Must be stored before creating windows: each new window fetches it on load.
-        lock(&self.state).current = Some(wallpaper.clone());
 
-        let shown = match mode {
-            RenderMode::Native => {
-                self.close_live_windows(app);
-                Ok(())
+        let previous = self.layout();
+        match target {
+            Target::All => {
+                let mut state = lock(&self.state);
+                state.layout.mode = LayoutMode::Mirror;
+                state.layout.all = Some(wallpaper.clone());
             }
-            RenderMode::Live => {
-                display::list(app).and_then(|displays| self.ensure_live_windows(app, &displays))
+            Target::Display(id) => {
+                let displays = display::list(app)?;
+                let mut state = lock(&self.state);
+                state.layout.switch_to(LayoutMode::PerDisplay, &displays);
+                state.layout.displays.insert(id.clone(), wallpaper.clone());
             }
-        };
-        if let Err(err) = shown {
-            self.close_live_windows(app);
-            lock(&self.state).current = None;
+        }
+        if let Err(err) = self.refresh_windows(app) {
+            lock(&self.state).layout = previous;
+            let _ = self.refresh_windows(app);
             self.publish(app);
             return Err(err);
         }
 
         log::info!(
-            "Wallpaper: {} ({kind:?}, {mode:?})",
+            "Wallpaper for {}: {} ({kind:?}, {mode:?})",
+            describe_target(target),
             wallpaper.path.display()
         );
         self.publish(app);
         Ok(wallpaper)
     }
 
-    pub fn stop_live(&self, app: &AppHandle) {
+    pub fn clear(&self, app: &AppHandle, target: &Target) {
         let _op = lock(&self.ops);
-        self.close_live_windows(app);
-        let mut state = lock(&self.state);
-        if state
-            .current
-            .as_ref()
-            .is_some_and(|w| w.mode == RenderMode::Live)
         {
-            state.current = None;
+            let mut state = lock(&self.state);
+            match target {
+                Target::All => state.layout.clear_live(),
+                Target::Display(id) => {
+                    state.layout.displays.remove(id);
+                }
+            }
         }
-        drop(state);
+        if let Err(err) = self.refresh_windows(app) {
+            log::warn!("Could not update the wallpaper windows: {err}");
+        }
         self.publish(app);
+    }
+
+    pub fn set_mode(&self, app: &AppHandle, mode: LayoutMode) -> Result<()> {
+        let _op = lock(&self.ops);
+        let displays = display::list(app)?;
+        lock(&self.state).layout.switch_to(mode, &displays);
+        let result = self.reconcile(app, &displays);
+        self.publish(app);
+        result
     }
 
     pub fn restore(&self, app: &AppHandle) {
         let _op = lock(&self.ops);
-        let Some(wallpaper) = self.current() else {
-            return;
-        };
-        if !wallpaper.path.is_file() {
-            log::warn!(
-                "Last wallpaper no longer exists: {}",
-                wallpaper.path.display()
-            );
-            lock(&self.state).current = None;
-            self.publish(app);
-            return;
+        let forgot = lock(&self.state).layout.forget_missing_files();
+        for wallpaper in self.layout().wallpapers() {
+            allow_media_access(app, &wallpaper.path, wallpaper.kind);
         }
-        allow_media_access(app, &wallpaper.path, wallpaper.kind);
-        if wallpaper.mode == RenderMode::Live {
-            let restored =
-                display::list(app).and_then(|displays| self.ensure_live_windows(app, &displays));
-            if let Err(err) = restored {
-                log::error!("Could not restore the live wallpaper: {err}");
-            }
+        if let Err(err) = self.refresh_windows(app) {
+            log::error!("Could not restore the live wallpapers: {err}");
+        }
+        if forgot {
+            log::warn!("Forgot saved wallpapers whose files no longer exist");
+            self.publish(app);
         }
     }
 
     pub fn sync_live_windows(&self, app: &AppHandle, displays: &[DisplayInfo]) -> Result<()> {
         let _op = lock(&self.ops);
-        let is_live = self.current().is_some_and(|w| w.mode == RenderMode::Live);
-        if !is_live || displays.is_empty() {
-            return Ok(());
-        }
-        self.ensure_live_windows(app, displays)
+        self.reconcile(app, displays)
     }
 
-    fn ensure_live_windows(&self, app: &AppHandle, displays: &[DisplayInfo]) -> Result<()> {
-        let generation = {
-            let mut state = lock(&self.state);
-            let up_to_date = state.live_displays.as_deref() == Some(displays)
-                && live_windows(app, Some(state.generation)).len() == displays.len();
-            if up_to_date {
-                return Ok(());
-            }
-            state.generation += 1;
-            state.generation
+    fn refresh_windows(&self, app: &AppHandle) -> Result<()> {
+        let displays = display::list(app)?;
+        self.reconcile(app, &displays)
+    }
+
+    fn reconcile(&self, app: &AppHandle, displays: &[DisplayInfo]) -> Result<()> {
+        let (wanted, current, ready) = {
+            let state = lock(&self.state);
+            (
+                state.layout.live_displays(displays),
+                state.live.clone(),
+                state.ready.clone(),
+            )
         };
-
-        self.close_live_windows(app);
-        for (index, display) in displays.iter().enumerate() {
-            let label = format!("{LIVE_LABEL_PREFIX}{generation}-{index}");
-            create_live_window(app, &label, display)?;
-        }
-        lock(&self.state).live_displays = Some(displays.to_vec());
-        log::info!("Live wallpaper on {} display(s)", displays.len());
-        Ok(())
-    }
-
-    fn close_live_windows(&self, app: &AppHandle) {
-        let windows = live_windows(app, None);
-        lock(&self.state).live_displays = None;
-        if windows.is_empty() {
-            return;
-        }
-        for window in windows {
-            if let Err(err) = window.destroy() {
-                log::warn!("Could not close {}: {err}", window.label());
+        let stalled = |window: &LiveWindow| {
+            !ready.contains(&window.label) && window.created.elapsed() > READY_TIMEOUT
+        };
+        let (mut live, closed): (Vec<_>, Vec<_>) = current.into_iter().partition(|window| {
+            wanted.contains(&window.display)
+                && app.get_webview_window(&window.label).is_some()
+                && !stalled(window)
+        });
+        for window in &closed {
+            if stalled(window) {
+                log::warn!("{} never loaded; recreating it", window.label);
+            }
+            lock(&self.state).ready.remove(&window.label);
+            if let Some(webview) = app.get_webview_window(&window.label) {
+                if let Err(err) = webview.destroy() {
+                    log::warn!("Could not close {}: {err}", window.label);
+                }
             }
         }
-        // Queued after the destroy messages, so it runs once the windows are gone.
-        if let Err(err) = platform::on_main_thread(app, platform::after_live_windows_closed) {
-            log::warn!("Could not refresh the desktop: {err}");
+
+        let kept = live.len();
+        let mut result = Ok(());
+        for display in wanted.iter() {
+            if live.iter().any(|window| &window.display == display) {
+                continue;
+            }
+            let label = {
+                let mut state = lock(&self.state);
+                state.next_label += 1;
+                format!("{LIVE_LABEL_PREFIX}{}", state.next_label)
+            };
+            match create_live_window(app, &label, display) {
+                Ok(()) => live.push(LiveWindow {
+                    label,
+                    display: display.clone(),
+                    created: Instant::now(),
+                }),
+                Err(err) => {
+                    result = Err(err);
+                    break;
+                }
+            }
         }
+
+        let opened = live.len() - kept;
+        if opened > 0 || !closed.is_empty() {
+            log::info!(
+                "Live wallpaper windows: {} (opened {opened}, closed {})",
+                live.len(),
+                closed.len()
+            );
+        }
+        let none_left = live.is_empty();
+        lock(&self.state).live = live;
+        if !closed.is_empty() && none_left {
+            if let Err(err) = platform::on_main_thread(app, platform::after_live_windows_closed) {
+                log::warn!("Could not refresh the desktop: {err}");
+            }
+        }
+        result
     }
 
     fn publish(&self, app: &AppHandle) {
-        let current = self.current();
-        if let Err(err) = app.emit(WALLPAPER_CHANGED, &current) {
-            log::warn!("Could not broadcast the wallpaper change: {err}");
+        let layout = self.layout();
+        if let Err(err) = app.emit(LAYOUT_CHANGED, &layout) {
+            log::warn!("Could not broadcast the layout: {err}");
         }
-        if let Err(err) = (Settings { current }).save(&self.settings_path) {
+        if let Err(err) = Settings::new(layout).save(&self.settings_path) {
             log::warn!("Could not save settings: {err}");
         }
     }
@@ -221,6 +275,8 @@ impl Engine {
 
 fn create_live_window(app: &AppHandle, label: &str, display: &DisplayInfo) -> Result<()> {
     let (x, y, width, height) = display.logical_rect();
+    let display_id =
+        serde_json::to_string(&display.id).map_err(|err| Error::platform(err.to_string()))?;
     let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App("wallpaper.html".into()))
         .title("WallKika")
         .position(x, y)
@@ -238,22 +294,12 @@ fn create_live_window(app: &AppHandle, label: &str, display: &DisplayInfo) -> Re
         .visible_on_all_workspaces(true)
         .background_color(Color(0, 0, 0, 255))
         .disable_drag_drop_handler()
+        .additional_browser_args(platform::BROWSER_ARGS)
+        .initialization_script(format!("window.__WALLKIKA_DISPLAY__ = {display_id};"))
         .build()?;
 
     let display = display.clone();
     platform::on_main_thread(app, move || platform::attach_live_window(&window, &display))?
-}
-
-fn live_windows(app: &AppHandle, generation: Option<u64>) -> Vec<WebviewWindow> {
-    let prefix = match generation {
-        Some(generation) => format!("{LIVE_LABEL_PREFIX}{generation}-"),
-        None => LIVE_LABEL_PREFIX.to_string(),
-    };
-    app.webview_windows()
-        .into_iter()
-        .filter(|(label, _)| label.starts_with(&prefix))
-        .map(|(_, window)| window)
-        .collect()
 }
 
 fn allow_media_access(app: &AppHandle, path: &Path, kind: MediaKind) {
@@ -261,6 +307,13 @@ fn allow_media_access(app: &AppHandle, path: &Path, kind: MediaKind) {
     match (kind, path.parent()) {
         (MediaKind::Web, Some(dir)) => scope.allow_dir(dir),
         _ => scope.allow_file(path),
+    }
+}
+
+fn describe_target(target: &Target) -> String {
+    match target {
+        Target::All => "all displays".into(),
+        Target::Display(id) => format!("display {id}"),
     }
 }
 

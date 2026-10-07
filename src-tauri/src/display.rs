@@ -8,6 +8,7 @@ pub const DISPLAYS_CHANGED: &str = "displays-changed";
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DisplayInfo {
+    pub id: String,
     pub name: String,
     pub x: i32,
     pub y: i32,
@@ -21,11 +22,13 @@ impl DisplayInfo {
     fn from_monitor(index: usize, monitor: &Monitor, primary: Option<&Monitor>) -> Self {
         let position = monitor.position();
         let size = monitor.size();
+        let name = monitor
+            .name()
+            .cloned()
+            .unwrap_or_else(|| format!("Display {}", index + 1));
         Self {
-            name: monitor
-                .name()
-                .cloned()
-                .unwrap_or_else(|| format!("Display {}", index + 1)),
+            id: format!("{name}@{},{}", position.x, position.y),
+            name,
             x: position.x,
             y: position.y,
             width: size.width,
@@ -55,7 +58,7 @@ pub fn list(app: &AppHandle) -> Result<Vec<DisplayInfo>> {
         .enumerate()
         .map(|(index, monitor)| DisplayInfo::from_monitor(index, monitor, primary.as_ref()))
         .collect();
-    platform::name_displays(app, &mut displays);
+    platform::describe_displays(app, &mut displays);
     Ok(displays)
 }
 
@@ -112,6 +115,7 @@ mod tests {
     #[test]
     fn logical_rect_uses_each_display_scale() {
         let retina = DisplayInfo {
+            id: "retina".into(),
             name: "Color LCD".into(),
             x: -2880,
             y: 360,

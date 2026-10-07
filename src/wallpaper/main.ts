@@ -1,4 +1,20 @@
-import { api, errorText, events, mediaUrl, type Wallpaper } from "../shared/api";
+import {
+  api,
+  errorText,
+  events,
+  liveWallpaperFor,
+  mediaUrl,
+  type Layout,
+  type Wallpaper,
+} from "../shared/api";
+
+declare global {
+  interface Window {
+    __WALLKIKA_DISPLAY__?: string;
+  }
+}
+
+const displayId = window.__WALLKIKA_DISPLAY__ ?? "";
 
 const FADE_MS = 600;
 const WATCHDOG_MS = 5000;
@@ -103,5 +119,9 @@ setInterval(() => {
   }
 }, WATCHDOG_MS);
 
-void events.onWallpaperChanged(show);
-api.currentWallpaper().then(show, (error) => void api.reportRenderer("error", errorText(error)));
+function render(layout: Layout) {
+  show(liveWallpaperFor(layout, displayId));
+}
+
+void events.onLayoutChanged(render);
+api.getLayout().then(render, (error) => void api.reportRenderer("error", errorText(error)));

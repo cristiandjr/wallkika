@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WallKika</title>
+    <link rel="stylesheet" href="/src/panel/panel.css" />
+    <script type="module" src="/src/panel/main.ts"></script>
+  </head>
+
+  <body>
+    <main class="app">
+      <header class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <span></span><span></span>
+        </div>
+        <div>
+          <h1>WallKika</h1>
+          <p class="tagline">One wallpaper, every screen</p>
+        </div>
+      </header>
+
+      <section class="now" aria-labelledby="now-name">
+        <div class="preview" id="preview">
+          <div class="preview-empty" id="preview-empty">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="13" rx="2" />
+              <path d="M8 21h8M12 17v4" />
+              <path d="m7 13 3-3 2 2 3-3 2 2" />
+            </svg>
+            <span>No WallKika wallpaper yet</span>
+          </div>
+        </div>
+        <div class="now-info">
+          <h2 class="now-name" id="now-name">No wallpaper</h2>
+          <p class="now-meta" id="now-meta">Pick an image, a GIF, a video or an HTML page.</p>
+        </div>
+      </section>
+
+      <section class="actions">
+        <button id="choose" class="btn btn-primary" type="button">Choose file…</button>
+        <button id="stop" class="btn btn-ghost" type="button" hidden>Stop live wallpaper</button>
+        <p class="hint">or drop a file on this window</p>
+      </section>
+
+      <section class="displays" aria-labelledby="displays-title">
+        <h2 class="section-title" id="displays-title">
+          Displays <span class="count" id="displays-count"></span>
+        </h2>
+        <div class="display-map" id="display-map" aria-hidden="true"></div>
+        <ul class="display-list" id="display-list"></ul>
+      </section>
+
+      <footer class="formats">
+        Images (JPG, PNG, HEIC, AVIF, WebP) · GIF · Video (MP4, MOV, WebM) · HTML
+      </footer>
+    </main>
+
+    <div class="drop-overlay" id="drop-overlay" hidden>
+      <div class="drop-card">Drop the file to use it as your wallpaper</div>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

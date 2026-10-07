@@ -1,4 +1,8 @@
 <p align="center">
+  <b>English</b> · <a href="README.es.md">Español</a>
+</p>
+
+<p align="center">
   <img src="app-icon.png" width="128" alt="WallKika icon">
 </p>
 
@@ -12,9 +16,18 @@
 <p align="center">
   <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-7b5cff">
   <img alt="Status: preview" src="https://img.shields.io/badge/status-preview-ff5c8a">
-  <img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-555">
   <img alt="Built with Tauri 2 and Rust" src="https://img.shields.io/badge/built%20with-Tauri%202%20%2B%20Rust-24c8db">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2ea44f">
+</p>
+
+<p align="center">
+  <a href="../../releases/latest/download/WallKika-macOS.zip"><img alt="Download for macOS" src="https://img.shields.io/badge/macOS-Download-111111?style=for-the-badge&logo=apple&logoColor=white"></a>
+  <a href="../../releases/latest/download/WallKika-Windows-x64.exe"><img alt="Download for Windows" src="https://img.shields.io/badge/Windows-Download-0078D4?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMgM2g4LjV2OC41SDN6bTkuNSAwSDIxdjguNWgtOC41ek0zIDEyLjVoOC41VjIxSDN6bTkuNSAwSDIxVjIxaC04LjV6Ii8%2BPC9zdmc%2B"></a>
+  <a href="../../releases/latest/download/WallKika-Linux-x86_64.AppImage"><img alt="Download for Linux" src="https://img.shields.io/badge/Linux-Download-E95420?style=for-the-badge&logo=linux&logoColor=white"></a>
+</p>
+
+<p align="center">
+  <sub>No installer: download, open, done. macOS universal (Apple Silicon + Intel) · Windows 10/11 x64 · Linux x86_64 · <a href="../../releases">all releases</a></sub>
 </p>
 
 <p align="center">
@@ -31,6 +44,16 @@
 - **GIFs and web pages.** Use a GIF or any HTML page (a clock, a shader, a dashboard) as a live wallpaper. Pages run sandboxed.
 - **Stays out of the way.** Menu bar / tray controls, drag and drop, and a CLI (`wallkika video.mp4`). Closing the panel keeps it running, and the last live wallpaper comes back on startup.
 - **Light on resources.** About 25 MB of RAM for the core and roughly 12% of one CPU core for a 1080p video on two displays (Apple M2).
+
+## Download
+
+WallKika is portable: there is nothing to install. Grab the file for your system from the buttons above or from [Releases](../../releases).
+
+| System | File | First run |
+| --- | --- | --- |
+| macOS 13+ | `WallKika-macOS.zip` | Unzip and open `WallKika.app`. Move it to **Applications** if you want to keep it. The app isn't notarized by Apple yet: if macOS blocks it, go to **System Settings → Privacy & Security → Open Anyway**. |
+| Windows 10 / 11 | `WallKika-Windows-x64.exe` | Double-click to run, then pin it to the taskbar or Start if you like. SmartScreen may warn about an unknown publisher: **More info → Run anyway**. Needs Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already include. |
+| Linux | `WallKika-Linux-x86_64.AppImage` | `chmod +x WallKika-Linux-x86_64.AppImage` and run it. Some distributions need `libfuse2` to open AppImages. |
 
 ## Status: v0.1.0 preview
 
@@ -50,8 +73,8 @@ flowchart LR
     Tray["Menu bar / tray"] --> Engine
     CLI["wallkika file.mp4"] --> Engine
     Engine["Rust core"] -->|image| Native["System wallpaper API"]
-    Engine -->|"video · GIF · HTML"| Windows["One window per display<br/>behind the desktop icons"]
-    Windows -->|"wallkika:// with byte ranges"| Files[("The file you picked")]
+    Engine -->|"video · GIF · HTML"| Live["One window per display<br/>behind the desktop icons"]
+    Live -->|"wallkika:// with byte ranges"| Files[("The file you picked")]
 ```
 
 Static images use the native API of each system: `NSWorkspace` on macOS, `IDesktopWallpaper` on Windows, and `gsettings`, `plasma-apply-wallpaperimage`, `xfconf-query`, `swww` or `feh` on Linux, depending on the desktop.
@@ -64,22 +87,19 @@ Live wallpapers are borderless webview windows, one per display, placed where th
 
 Media reaches those windows through a custom `wallkika://` protocol that serves exact byte ranges. That lets huge videos stream smoothly.
 
-## Install
+## Build from source
 
-There are no signed builds yet, so build it from source:
-
-1. Install [Node.js](https://nodejs.org) 20+, [Rust](https://rustup.rs) and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your system. The Rust version is pinned in `rust-toolchain.toml` and rustup installs it automatically.
+1. Install [Node.js](https://nodejs.org) 20+, [Rust](https://rustup.rs) and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your system. The Rust version is pinned in `rust-toolchain.toml`; run `rustup toolchain install` inside the project to get it.
 2. On Linux, also install the GStreamer plugins for video: `gstreamer1.0-plugins-good`, `gstreamer1.0-plugins-bad` and `gstreamer1.0-libav`.
 3. Build:
 
 ```bash
-git clone <this repository>
-cd WallKika
 npm install
-npm run tauri build
+npm run tauri dev     # run in development
+npm run package       # portable build for your OS, written to release/
 ```
 
-The app ends up in `src-tauri/target/release/bundle/` (`.app` on macOS, `.msi`/`.exe` on Windows, `.deb`/`.AppImage`/`.rpm` on Linux).
+On macOS, `npm run package` builds a universal app, so it needs both Rust targets: `rustup target add aarch64-apple-darwin x86_64-apple-darwin`. Set `MAC_TARGET=aarch64-apple-darwin` for a faster, Apple Silicon only build.
 
 ## Usage
 
@@ -103,8 +123,11 @@ src-tauri/src/
   platform/             macos.rs · windows.rs · linux.rs
   commands.rs · tray.rs · settings.rs · media.rs · error.rs
 scripts/
+  package.sh            portable build for the current OS
   cross-check.sh        lints the Windows and Linux backends from any OS
   macos/                debugging helpers (window levels, current wallpaper)
+.github/workflows/
+  release.yml           builds all platforms and publishes a GitHub release
 ```
 
 ## Security
@@ -117,7 +140,7 @@ scripts/
 
 - [ ] Every video format (MKV, AVI, WMV, FLV…) through automatic ffmpeg remuxing or transcoding
 - [ ] Testing on Windows and Linux hardware
-- [ ] Signed and notarized releases with auto-update
+- [ ] Apple notarization and Windows code signing, auto-update
 - [ ] Launch at login
 - [ ] A different wallpaper per display, and fit modes (cover, contain, stretch)
 - [ ] Playlists and schedules
@@ -138,6 +161,12 @@ npm run build && npm run check:cross                      # frontend + Windows/L
 ```
 
 Code style: English everywhere, self-explanatory names, and comments only when something is truly non-obvious (one line).
+
+### Releasing
+
+1. Bump `version` in `package.json` and `src-tauri/Cargo.toml`.
+2. Push a tag: `git tag v0.2.0 && git push origin v0.2.0`.
+3. The [Release workflow](.github/workflows/release.yml) builds macOS, Windows and Linux and publishes them on the Releases page. The download buttons always point to the latest release.
 
 ## Support the project
 

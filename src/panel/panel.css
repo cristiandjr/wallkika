@@ -66,34 +66,13 @@ body {
   gap: 12px;
 }
 
-.brand-mark {
-  position: relative;
+.brand-logo {
+  flex: none;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  border-radius: 11px;
+  object-fit: cover;
   box-shadow: var(--shadow);
-}
-
-.brand-mark span {
-  position: absolute;
-  height: 13px;
-  border-radius: 3px;
-  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-}
-
-.brand-mark span:first-child {
-  left: 6px;
-  top: 9px;
-  width: 17px;
-}
-
-.brand-mark span:last-child {
-  right: 6px;
-  top: 17px;
-  width: 13px;
-  opacity: 0.85;
 }
 
 h1 {

@@ -14,7 +14,8 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     let separator = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(app, &[&choose, &panel, &stop, &separator, &quit])?;
 
-    let mut tray = TrayIconBuilder::with_id("wallkika")
+    TrayIconBuilder::with_id("wallkika")
+        .icon(Image::from_bytes(include_bytes!("../icons/tray.png"))?)
         .tooltip("WallKika")
         .menu(&menu)
         .show_menu_on_left_click(true)
@@ -34,16 +35,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             }
             "quit" => app.exit(0),
             _ => {}
-        });
-    if cfg!(target_os = "macos") {
-        tray = tray
-            .icon(Image::from_bytes(include_bytes!(
-                "../icons/tray-template.png"
-            ))?)
-            .icon_as_template(true);
-    } else if let Some(icon) = app.default_window_icon() {
-        tray = tray.icon(icon.clone());
-    }
-    tray.build(app)?;
+        })
+        .build(app)?;
     Ok(())
 }

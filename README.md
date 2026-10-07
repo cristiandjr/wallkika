@@ -22,12 +22,12 @@
 
 <p align="center">
   <a href="../../releases/latest/download/WallKika-macOS.zip"><img alt="Download for macOS" src="https://img.shields.io/badge/macOS-Download-111111?style=for-the-badge&logo=apple&logoColor=white"></a>
-  <a href="../../releases/latest/download/WallKika-Windows-x64.exe"><img alt="Download for Windows" src="https://img.shields.io/badge/Windows-Download-0078D4?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMgM2g4LjV2OC41SDN6bTkuNSAwSDIxdjguNWgtOC41ek0zIDEyLjVoOC41VjIxSDN6bTkuNSAwSDIxVjIxaC04LjV6Ii8%2BPC9zdmc%2B"></a>
-  <a href="../../releases/latest/download/WallKika-Linux-x86_64.AppImage"><img alt="Download for Linux" src="https://img.shields.io/badge/Linux-Download-E95420?style=for-the-badge&logo=linux&logoColor=white"></a>
+  <a href="../../releases/latest/download/WallKika-Windows-x64.zip"><img alt="Download for Windows" src="https://img.shields.io/badge/Windows-Download-0078D4?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMgM2g4LjV2OC41SDN6bTkuNSAwSDIxdjguNWgtOC41ek0zIDEyLjVoOC41VjIxSDN6bTkuNSAwSDIxVjIxaC04LjV6Ii8%2BPC9zdmc%2B"></a>
+  <a href="../../releases/latest/download/WallKika-Linux-x86_64.zip"><img alt="Download for Linux" src="https://img.shields.io/badge/Linux-Download-E95420?style=for-the-badge&logo=linux&logoColor=white"></a>
 </p>
 
 <p align="center">
-  <sub>No installer: download, open, done. macOS universal (Apple Silicon + Intel) · Windows 10/11 x64 · Linux x86_64 · <a href="../../releases">all releases</a></sub>
+  <sub>No installer: download the zip, open the app inside, done. macOS universal (Apple Silicon + Intel) · Windows 10/11 x64 · Linux x86_64 · <a href="../../releases">all releases</a></sub>
 </p>
 
 <p align="center">
@@ -60,13 +60,13 @@
 
 ## Download
 
-WallKika is portable: there is nothing to install. Grab the file for your system from the buttons above or from [Releases](../../releases).
+WallKika is portable: there is nothing to install. Every download is a zip with the app inside. Grab the file for your system from the buttons above or from [Releases](../../releases).
 
 | System | File | First run |
 | --- | --- | --- |
 | macOS 13+ | `WallKika-macOS.zip` | Unzip and open `WallKika.app`. Move it to **Applications** if you want to keep it. The app isn't notarized by Apple yet: if macOS blocks it, go to **System Settings → Privacy & Security → Open Anyway**. |
-| Windows 10 / 11 | `WallKika-Windows-x64.exe` | Double-click to run, then pin it to the taskbar or Start if you like. SmartScreen may warn about an unknown publisher: **More info → Run anyway**. Needs Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already include. |
-| Linux | `WallKika-Linux-x86_64.AppImage` | `chmod +x WallKika-Linux-x86_64.AppImage` and run it. Some distributions need `libfuse2` to open AppImages. |
+| Windows 10 / 11 | `WallKika-Windows-x64.zip` | Unzip and run `WallKika.exe`, then pin it to the taskbar or Start if you like. SmartScreen may warn about an unknown publisher: **More info → Run anyway**. Needs Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already include. |
+| Linux | `WallKika-Linux-x86_64.zip` | Unzip and run `WallKika.AppImage` (if your file manager drops the permission, `chmod +x WallKika.AppImage`). Some distributions need `libfuse2` to open AppImages. |
 
 ## Status: v0.2.0 preview
 

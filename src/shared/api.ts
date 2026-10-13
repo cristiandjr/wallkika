@@ -19,10 +19,21 @@ export interface Wallpaper {
   mode: RenderMode;
 }
 
+export interface Screensaver {
+  enabled: boolean;
+  display: string | null;
+}
+
+export interface ScreensaverInfo {
+  screensaver: boolean;
+  selected: boolean | null;
+}
+
 export interface Layout {
   mode: LayoutMode;
   all: Wallpaper | null;
   displays: Record<string, Wallpaper>;
+  screensaver: Screensaver;
 }
 
 export interface DisplayInfo {
@@ -48,6 +59,7 @@ export interface Overview {
   version: string;
   updateFeed: string | null;
   update: UpdateInfo | null;
+  screensaver: ScreensaverInfo;
 }
 
 export function liveWallpaperFor(layout: Layout, displayId: string): Wallpaper | null {
@@ -68,6 +80,16 @@ export const api = {
     invoke<void>("report_renderer", { status, detail }),
   reportUpdate: (version: string, url: string) => invoke<void>("report_update", { version, url }),
   openUpdate: () => invoke<void>("open_update"),
+  setScreensaver: (screensaver: Screensaver) =>
+    invoke<ScreensaverInfo>("set_screensaver", { screensaver }),
+  getScreensaverInfo: () => invoke<ScreensaverInfo>("get_screensaver_info"),
+  openScreensaverSettings: () => invoke<void>("open_screensaver_settings"),
+  lockScreenRequest: () => invoke<Wallpaper | null>("lock_screen_request"),
+  setLockScreenImage: (path: string, image: ArrayBuffer) =>
+    invoke<void>("set_lock_screen_image", new Uint8Array(image), {
+      headers: { "wallpaper-path": encodeURIComponent(path) },
+    }),
+  exitScreensaver: () => invoke<void>("exit_screensaver"),
 };
 
 export const events = {
@@ -78,6 +100,8 @@ export const events = {
   onWallpaperError: (cb: (message: string) => void): Promise<UnlistenFn> =>
     listen<string>("wallpaper-error", (e) => cb(e.payload)),
   onShowAbout: (cb: () => void): Promise<UnlistenFn> => listen("show-about", () => cb()),
+  onSystemPause: (cb: () => void): Promise<UnlistenFn> => listen("system-pause", () => cb()),
+  onSystemResume: (cb: () => void): Promise<UnlistenFn> => listen("system-resume", () => cb()),
 };
 
 export function errorText(error: unknown): string {

@@ -1,10 +1,11 @@
 use crate::{
     display::{self, DisplayInfo},
     error::{Error, Result},
-    layout::{Layout, LayoutMode, RenderMode, Wallpaper},
-    media::MediaKind,
+    layout::{Layout, LayoutMode, RenderMode, Screensaver, Wallpaper},
+    media::{self, MediaKind},
     platform,
     protocol::MediaScope,
+    screensaver,
     settings::Settings,
 };
 use std::{
@@ -83,9 +84,7 @@ impl Engine {
 
     pub fn apply(&self, app: &AppHandle, path: &Path, target: &Target) -> Result<Wallpaper> {
         let _op = lock(&self.ops);
-        let path = path
-            .canonicalize()
-            .map_err(|_| Error::NotFound(path.to_path_buf()))?;
+        let path = media::canonical_path(path).map_err(|_| Error::NotFound(path.to_path_buf()))?;
         if !path.is_file() {
             return Err(Error::NotFound(path));
         }
@@ -157,6 +156,12 @@ impl Engine {
         self.publish(app);
     }
 
+    pub fn set_screensaver(&self, app: &AppHandle, screensaver: Screensaver) {
+        let _op = lock(&self.ops);
+        lock(&self.state).layout.screensaver = screensaver;
+        self.publish(app);
+    }
+
     pub fn set_mode(&self, app: &AppHandle, mode: LayoutMode) -> Result<()> {
         let _op = lock(&self.ops);
         let displays = display::list(app)?;
@@ -178,6 +183,8 @@ impl Engine {
         if forgot {
             log::warn!("Forgot saved wallpapers whose files no longer exist");
             self.publish(app);
+        } else {
+            screensaver::sync(app, &self.layout());
         }
     }
 
@@ -267,6 +274,7 @@ impl Engine {
         if let Err(err) = app.emit(LAYOUT_CHANGED, &layout) {
             log::warn!("Could not broadcast the layout: {err}");
         }
+        screensaver::sync(app, &layout);
         if let Err(err) = Settings::new(layout).save(&self.settings_path) {
             log::warn!("Could not save settings: {err}");
         }
@@ -302,7 +310,7 @@ fn create_live_window(app: &AppHandle, label: &str, display: &DisplayInfo) -> Re
     platform::on_main_thread(app, move || platform::attach_live_window(&window, &display))?
 }
 
-fn allow_media_access(app: &AppHandle, path: &Path, kind: MediaKind) {
+pub(crate) fn allow_media_access(app: &AppHandle, path: &Path, kind: MediaKind) {
     let scope = app.state::<MediaScope>();
     match (kind, path.parent()) {
         (MediaKind::Web, Some(dir)) => scope.allow_dir(dir),
@@ -317,7 +325,7 @@ fn describe_target(target: &Target) -> String {
     }
 }
 
-fn file_name(path: &Path) -> String {
+pub(crate) fn file_name(path: &Path) -> String {
     path.file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_default()

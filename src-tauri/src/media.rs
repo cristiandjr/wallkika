@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 
 pub const IMAGE_EXTENSIONS: &[&str] = &[
     "jpg", "jpeg", "png", "webp", "avif", "heic", "heif", "bmp", "tif", "tiff",
@@ -37,6 +40,20 @@ impl MediaKind {
     pub fn is_static(self) -> bool {
         self == Self::Image
     }
+}
+
+// Windows canonical paths start with \\?\, which file URLs and most Windows APIs can't take.
+pub fn canonical_path(path: &Path) -> io::Result<PathBuf> {
+    let path = path.canonicalize()?;
+    match path.to_str().and_then(without_verbatim_prefix) {
+        Some(plain) if cfg!(windows) => Ok(PathBuf::from(plain)),
+        _ => Ok(path),
+    }
+}
+
+fn without_verbatim_prefix(path: &str) -> Option<&str> {
+    path.strip_prefix(r"\\?\")
+        .filter(|plain| !plain.starts_with(r"UNC\"))
 }
 
 pub fn all_extensions() -> Vec<&'static str> {
@@ -82,6 +99,19 @@ mod tests {
         assert_eq!(MediaKind::from_path(Path::new("notes.txt")), None);
         assert_eq!(MediaKind::from_path(Path::new("no-extension")), None);
         assert_eq!(MediaKind::from_path(Path::new(".mp4")), None);
+    }
+
+    #[test]
+    fn strips_the_windows_verbatim_prefix_from_local_paths() {
+        assert_eq!(
+            without_verbatim_prefix(r"\\?\C:\Users\me\clip.mp4"),
+            Some(r"C:\Users\me\clip.mp4")
+        );
+        assert_eq!(
+            without_verbatim_prefix(r"\\?\UNC\server\share\clip.mp4"),
+            None
+        );
+        assert_eq!(without_verbatim_prefix("/Users/me/clip.mp4"), None);
     }
 
     #[test]

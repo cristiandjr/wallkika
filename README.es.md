@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img alt="Versión 0.2.0" src="https://img.shields.io/badge/versi%C3%B3n-0.2.0-7b5cff">
+  <img alt="Versión 0.3.0" src="https://img.shields.io/badge/versi%C3%B3n-0.3.0-7b5cff">
   <img alt="Estado: preview" src="https://img.shields.io/badge/estado-preview-ff5c8a">
   <img alt="Hecho con Tauri 2 y Rust" src="https://img.shields.io/badge/hecho%20con-Tauri%202%20%2B%20Rust-24c8db">
   <img alt="Licencia: MIT" src="https://img.shields.io/badge/licencia-MIT-2ea44f">
@@ -31,9 +31,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/panel-per-display-dark.png" width="360" alt="Modo por pantalla: un video en la pantalla principal y una imagen en la de la notebook, modo oscuro">
+  <img src="docs/screenshots/panel-per-display-dark.png" width="360" alt="Modo por pantalla: un video en la pantalla principal, una imagen en la de la notebook y la principal elegida para el protector y la pantalla de bloqueo, modo oscuro">
   &nbsp;&nbsp;
-  <img src="docs/screenshots/panel-mirror-light.png" width="360" alt="Modo igual en todas las pantallas con una imagen como fondo del sistema, modo claro">
+  <img src="docs/screenshots/panel-mirror-light.png" width="360" alt="Modo igual en todas las pantallas con una imagen como fondo del sistema, también en el protector y la pantalla de bloqueo, modo claro">
 </p>
 
 ## Qué puede hacer WallKika
@@ -44,6 +44,8 @@
 - [x] GIFs y páginas HTML (relojes, shaders, dashboards) como fondos animados, aislados
 - [x] Pantallas con distinta densidad (Retina + 1080p) y conexión en caliente: un monitor nuevo recibe su fondo en 2 segundos
 - [x] Funciona en segundo plano: al cerrar la ventana, WallKika queda en la barra de menú / bandeja del sistema, fuera de Cmd+Tab, Alt+Tab, el Dock y la barra de tareas
+- [x] Tu fondo en el protector de pantalla y en la pantalla de bloqueo: un interruptor, más el botón de la luna en "Por pantalla" para elegir de qué pantalla tomarlo (macOS, Windows y Linux)
+- [x] Los videos siempre a su velocidad real: se pausan mientras la pantalla está bloqueada, dormida o tapada por el protector, y se resincronizan al volver
 - [x] Recuerda tus fondos entre reinicios
 - [x] Arrastrar y soltar, y línea de comandos: `wallkika archivo`, `--display N`, `--background`
 - [x] Avisa en el menú y en la ventana cuando sale una versión nueva
@@ -68,13 +70,13 @@ WallKika es portable: no hay nada que instalar. Cada descarga es un zip con la a
 | Windows 10 / 11 | `WallKika-Windows-x64.zip` | Descomprime y abre `WallKika.exe`; si quieres, ánclala a la barra de tareas o al Inicio. SmartScreen puede avisar que el editor es desconocido: **Más información → Ejecutar de todas formas**. Necesita Microsoft Edge WebView2, que ya viene en Windows 11 y en Windows 10 actualizado. |
 | Linux | `WallKika-Linux-x86_64.zip` | Descomprime y ejecuta `WallKika.AppImage` (si tu gestor de archivos le quita el permiso, `chmod +x WallKika.AppImage`). Algunas distribuciones necesitan `libfuse2` para abrir AppImages. |
 
-## Estado: v0.2.0 preview
+## Estado: v0.3.0 preview
 
-| Plataforma | Imágenes fijas | Fondos animados | Probado en hardware real |
-| --- | --- | --- | --- |
-| macOS 13+ | ✅ | ✅ | ✅ macOS 27, Apple M2, dos pantallas con distinta densidad |
-| Windows 10 / 11 (incluye 24H2) | 🧪 | 🧪 | Todavía no: compila sin errores, se buscan testers |
-| Linux (GNOME, KDE, XFCE, Cinnamon, MATE, LXQt, Sway, Hyprland…) | 🧪 | 🧪 X11 / XWayland | Todavía no: compila sin errores, se buscan testers |
+| Plataforma | Imágenes fijas | Fondos animados | Protector y pantalla de bloqueo | Probado en hardware real |
+| --- | --- | --- | --- | --- |
+| macOS 13+ | ✅ | ✅ | ✅ | ✅ macOS 27, Apple M2, dos pantallas con distinta densidad |
+| Windows 10 / 11 (incluye 24H2) | 🧪 | 🧪 | 🧪 | Todavía no: compila sin errores, se buscan testers |
+| Linux (GNOME, KDE, XFCE, Cinnamon, MATE, LXQt, Sway, Hyprland…) | 🧪 | 🧪 X11 / XWayland | 🧪 protector en XFCE y MATE | Todavía no: compila sin errores, se buscan testers |
 
 Si usas Windows o Linux, tu ayuda probando vale oro. Mira [Cómo contribuir](#cómo-contribuir).
 
@@ -82,10 +84,16 @@ Si usas Windows o Linux, tu ayuda probando vale oro. Mira [Cómo contribuir](#c�
 
 - **Igual en todas las pantallas**: elige un archivo o arrástralo a la ventana y todas las pantallas lo muestran.
 - **Por pantalla**: elige una pantalla en el mapa o en la lista y después un archivo para ella. Cada pantalla conserva su fondo; las que no tienen uno muestran el fondo del sistema.
+- **Protector y pantalla de bloqueo**: activa el interruptor y tu fondo se reproduce como protector de pantalla, mientras la pantalla de bloqueo muestra una foto de él (las páginas HTML solo van al protector). En "Por pantalla", toca la luna junto a la pantalla cuyo fondo quieres usar; de a una pantalla por vez.
+  - **macOS**: WallKika instala su protector y lo elige a través de System Events; la primera vez, macOS te pide permiso para que WallKika controle System Events. Si no lo das, WallKika muestra "Last step": toca **Settings…** y elige **WallKika** a mano (en las versiones nuevas de macOS está en **Fondo de pantalla → Protector de pantalla…**). La pantalla de bloqueo de macOS muestra el fondo del sistema, así que WallKika lo cambia por una foto de tu fondo; ahí solo se animan los Aerials de Apple.
+  - **Windows**: WallKika pasa a ser el protector y pone la imagen de la pantalla de bloqueo al instante; al desactivarlo te devuelve el protector anterior. **Settings…** abre el diálogo de Windows para cambiar el tiempo de espera.
+  - **Linux**: en XFCE y MATE, WallKika pasa a ser el protector al instante y te devuelve el anterior al desactivarlo. GNOME, KDE y Cinnamon no aceptan protectores de terceros, así que ahí solo pone la imagen de la pantalla de bloqueo (a través del fondo del escritorio y del ajuste de bloqueo de KDE).
 - **Barra de menú / bandeja**: abrir WallKika, quitar los fondos animados, ver el About, descargar una versión nueva cuando sale o salir. Cerrar la ventana solo la oculta; **Quit** cierra WallKika por completo.
 - **Línea de comandos**: `wallkika video.mp4` lo pone en todas las pantallas, `wallkika --display 2 foto.jpg` lo pone en la pantalla 2, y `wallkika --background` abre u oculta WallKika sin su ventana.
 
 La configuración se guarda en la carpeta de la app (`~/Library/Application Support/com.cristiandjr.wallkika/` en macOS). Los logs están en `~/Library/Logs/com.cristiandjr.wallkika/`.
+
+Para desinstalar, cierra WallKika y borra la app. Si usaste el protector de pantalla, primero desactívalo en WallKika (en Windows y Linux eso además te devuelve tu protector anterior) y después borra `~/Library/Screen Savers/WallKika.saver` en macOS, `%LOCALAPPDATA%\com.cristiandjr.wallkika\WallKika.scr` en Windows o `~/.local/share/applications/screensavers/wallkika.desktop` en Linux. La foto de la pantalla de bloqueo queda hasta que elijas otro fondo.
 
 ## Cómo funciona
 
@@ -96,6 +104,7 @@ flowchart LR
     CLI["wallkika archivo.mp4"] --> Engine
     Engine["Núcleo en Rust"] -->|"imagen en todas las pantallas"| Native["Fondo nativo del sistema"]
     Engine -->|"video · GIF · HTML · por pantalla"| Live["Una ventana por pantalla<br/>detrás de los íconos"]
+    Engine -->|"protector de pantalla"| Saver["WallKika.saver · WallKika.scr<br/>protector de XFCE / MATE"]
     Live -->|"wallkika:// por rangos"| Files[("Los archivos que elegiste")]
 ```
 
@@ -109,6 +118,16 @@ Todo lo demás lo dibujan ventanas sin bordes, una por pantalla, ubicadas donde 
 
 Cada ventana reconoce su pantalla por un ID de hardware estable, así que la configuración por pantalla sobrevive aunque reordenes los monitores. Los archivos llegan a las ventanas por un protocolo propio, `wallkika://`, que sirve rangos exactos de bytes; por eso los videos enormes se reproducen fluidos. Si una ventana no carga, se vuelve a crear sola.
 
+Los videos se pausan mientras nadie los ve: WallKika escucha los eventos de bloqueo, suspensión, pantalla y protector (`NSWorkspace` y notificaciones distribuidas en macOS, notificaciones de sesión y energía en Windows, D-Bus en Linux). Al volver, cada video se resincroniza, y un control de velocidad corrige cualquier video que vaya más rápido que el tiempo real.
+
+El protector de pantalla usa el mecanismo nativo de cada sistema:
+
+- **macOS**: un pequeño módulo de protector en Swift, `WallKika.saver`, instalado en `~/Library/Screen Savers`. Reproduce el fondo con AVFoundation desde un enlace duro junto a la configuración de WallKika, así nunca necesita acceso a tus carpetas. WallKika lo elige con AppleScript (`System Events`), recuerda tu protector anterior y te lo devuelve cuando desactivas la opción.
+- **Windows**: WallKika se copia como `WallKika.scr` y lo elige como protector. Windows lo ejecuta con `/s` y cubre todas las pantallas hasta que muevas el mouse o toques una tecla.
+- **Linux**: WallKika se agrega a los protectores de xfce4-screensaver y mate-screensaver, se elige a sí mismo en su configuración y dibuja dentro de la ventana que le dan.
+
+Para la pantalla de bloqueo, el panel dibuja un cuadro de tu fondo en un canvas y lo guarda como JPEG: en macOS y Linux pasa a ser el fondo del sistema (sus pantallas de bloqueo lo muestran) y en Windows, la imagen de la pantalla de bloqueo.
+
 ## Compilar desde el código
 
 1. Instala [Node.js](https://nodejs.org) 20+, [Rust](https://rustup.rs) y los [requisitos de Tauri](https://v2.tauri.app/start/prerequisites/) para tu sistema. La versión de Rust está fijada en `rust-toolchain.toml`; ejecuta `rustup toolchain install` dentro del proyecto para obtenerla.
@@ -121,7 +140,7 @@ npm run tauri dev     # modo desarrollo
 npm run package       # versión portable para tu sistema, en release/
 ```
 
-En macOS, `npm run package` genera una app universal, así que necesita los dos targets de Rust: `rustup target add aarch64-apple-darwin x86_64-apple-darwin`. Con `MAC_TARGET=aarch64-apple-darwin` compila solo para Apple Silicon, más rápido.
+En macOS, `npm run package` genera una app universal, así que necesita los dos targets de Rust: `rustup target add aarch64-apple-darwin x86_64-apple-darwin`. Con `MAC_TARGET=aarch64-apple-darwin` compila solo para Apple Silicon, más rápido. Cargo también compila el módulo del protector con `swiftc`, que viene con las Command Line Tools de Xcode.
 
 ## Estructura del proyecto
 
@@ -136,10 +155,13 @@ src-tauri/src/
   display.rs            lista de pantallas, IDs estables y detección de cambios
   protocol.rs           protocolo wallkika:// (rangos de bytes + lista de permitidos)
   updates.rs            aviso de versión nueva (releases de GitHub)
+  screensaver/          protector de pantalla por sistema y modo protector propio de WallKika
   platform/             macos.rs · windows.rs · linux.rs
   commands.rs · tray.rs · settings.rs · media.rs · error.rs
+screensaver/macos/      módulo nativo del protector para macOS (Swift)
 scripts/
   package.sh            versión portable para el sistema actual
+  build-saver.sh        compila WallKika.saver (Cargo lo corre en macOS)
   cross-check.sh        revisa los backends de Windows y Linux desde cualquier sistema
   macos/                herramientas de diagnóstico (niveles de ventana, fondo actual)
 .github/workflows/
@@ -150,6 +172,7 @@ scripts/
 
 - Las ventanas de fondo solo pueden leer los archivos que elegiste (y la carpeta de un fondo HTML) a través de `wallkika://`. Todo lo demás se rechaza.
 - Los fondos HTML corren en un iframe aislado, sin acceso a la API de la app.
+- El protector de pantalla solo lee el fondo que incluiste en él. Para armar la foto de la pantalla de bloqueo, solo la ventana de WallKika puede leer los píxeles de tus archivos; los fondos HTML no.
 - Content Security Policy estricta y permisos mínimos de Tauri. Sin telemetría.
 - WallKika hace un solo pedido de red: consulta la última release de este repositorio en GitHub, al abrir y cada 12 horas. El link de actualización solo abre páginas de releases de este repositorio. Las páginas HTML que agregues como fondo pueden cargar su propio contenido.
 
@@ -169,7 +192,7 @@ Estilo de código: todo en inglés, nombres que se expliquen solos y comentarios
 ### Publicar una versión
 
 1. Actualiza `version` en `package.json` y `src-tauri/Cargo.toml`.
-2. Sube un tag: `git tag v0.2.0 && git push origin v0.2.0`.
+2. Sube un tag: `git tag v0.3.0 && git push origin v0.3.0`.
 3. El [workflow de Release](.github/workflows/release.yml) compila macOS, Windows y Linux y los publica en Releases. Los botones de descarga siempre apuntan a la última versión, y las copias de WallKika que estén abiertas avisan que hay una nueva.
 
 ## Autor

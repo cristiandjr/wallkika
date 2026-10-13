@@ -32,12 +32,21 @@ pub enum LayoutMode {
     PerDisplay,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Screensaver {
+    #[serde(alias = "mirror")]
+    pub enabled: bool,
+    pub display: Option<String>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Layout {
     pub mode: LayoutMode,
     pub all: Option<Wallpaper>,
     pub displays: BTreeMap<String, Wallpaper>,
+    pub screensaver: Screensaver,
 }
 
 impl Layout {
@@ -64,7 +73,29 @@ impl Layout {
                 }
             }
         }
+        if mode == LayoutMode::PerDisplay && self.screensaver.display.is_none() {
+            self.screensaver.display = displays
+                .iter()
+                .find(|d| d.primary)
+                .or(displays.first())
+                .map(|d| d.id.clone());
+        }
         self.mode = mode;
+    }
+
+    pub fn screensaver_wallpaper(&self) -> Option<&Wallpaper> {
+        if !self.screensaver.enabled {
+            return None;
+        }
+        match self.mode {
+            LayoutMode::Mirror => self.all.as_ref(),
+            LayoutMode::PerDisplay => self
+                .screensaver
+                .display
+                .as_ref()
+                .and_then(|id| self.displays.get(id))
+                .or_else(|| self.displays.values().next()),
+        }
     }
 
     pub fn clear_live(&mut self) {
@@ -168,6 +199,53 @@ mod tests {
         };
         layout.switch_to(LayoutMode::PerDisplay, &[display("a")]);
         assert!(layout.displays.is_empty());
+    }
+
+    #[test]
+    fn screensaver_follows_the_current_mode() {
+        let mut layout = Layout {
+            all: Some(wallpaper("photo.jpg", RenderMode::Native)),
+            ..Layout::default()
+        };
+        layout
+            .displays
+            .insert("a".into(), wallpaper("clock.html", RenderMode::Live));
+        layout
+            .displays
+            .insert("b".into(), wallpaper("matrix.mp4", RenderMode::Live));
+        assert!(layout.screensaver_wallpaper().is_none());
+
+        layout.screensaver.enabled = true;
+        assert_eq!(layout.screensaver_wallpaper().unwrap().name, "photo.jpg");
+
+        layout.mode = LayoutMode::PerDisplay;
+        layout.screensaver.display = Some("b".into());
+        assert_eq!(layout.screensaver_wallpaper().unwrap().name, "matrix.mp4");
+
+        layout.displays.remove("b");
+        assert_eq!(layout.screensaver_wallpaper().unwrap().name, "clock.html");
+    }
+
+    #[test]
+    fn per_display_screensaver_starts_on_the_main_display() {
+        let mut layout = Layout {
+            all: Some(wallpaper("matrix.mp4", RenderMode::Live)),
+            screensaver: Screensaver {
+                enabled: true,
+                display: None,
+            },
+            ..Layout::default()
+        };
+        let mut main = display("b");
+        main.primary = true;
+        layout.switch_to(LayoutMode::PerDisplay, &[display("a"), main]);
+        assert_eq!(layout.screensaver.display.as_deref(), Some("b"));
+    }
+
+    #[test]
+    fn reads_the_first_screensaver_format() {
+        let saved: Screensaver = serde_json::from_str(r#"{"mirror":true,"display":null}"#).unwrap();
+        assert!(saved.enabled);
     }
 
     #[test]

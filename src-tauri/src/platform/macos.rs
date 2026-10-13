@@ -1,16 +1,23 @@
-use super::on_main_thread;
+use super::{on_main_thread, SYSTEM_PAUSE, SYSTEM_RESUME};
 use crate::{
     display::DisplayInfo,
     error::{Error, Result},
 };
+use block2::RcBlock;
 use objc2::{runtime::AnyObject, MainThreadMarker};
 use objc2_app_kit::{
     NSImageScaling, NSScreen, NSWindow, NSWindowAnimationBehavior, NSWindowCollectionBehavior,
     NSWorkspace, NSWorkspaceDesktopImageAllowClippingKey, NSWorkspaceDesktopImageScalingKey,
+    NSWorkspaceDidWakeNotification, NSWorkspaceScreensDidSleepNotification,
+    NSWorkspaceScreensDidWakeNotification, NSWorkspaceSessionDidBecomeActiveNotification,
+    NSWorkspaceSessionDidResignActiveNotification, NSWorkspaceWillSleepNotification,
 };
-use objc2_foundation::{NSDictionary, NSNumber, NSPoint, NSRect, NSSize, NSString, NSURL};
-use std::path::Path;
-use tauri::{AppHandle, WebviewWindow};
+use objc2_foundation::{
+    NSDictionary, NSDistributedNotificationCenter, NSNotification, NSNotificationCenter,
+    NSNotificationName, NSNumber, NSOperationQueue, NSPoint, NSRect, NSSize, NSString, NSURL,
+};
+use std::{path::Path, ptr::NonNull};
+use tauri::{AppHandle, Emitter, WebviewWindow};
 
 #[link(name = "CoreGraphics", kind = "framework")]
 extern "C" {
@@ -87,6 +94,63 @@ pub fn attach_live_window(window: &WebviewWindow, display: &DisplayInfo) -> Resu
 }
 
 pub fn after_live_windows_closed() {}
+
+pub fn watch_system_events(app: &AppHandle) {
+    let workspace = NSWorkspace::sharedWorkspace().notificationCenter();
+    let distributed = NSDistributedNotificationCenter::defaultCenter();
+    let (pauses, resumes) = unsafe {
+        (
+            [
+                NSWorkspaceScreensDidSleepNotification,
+                NSWorkspaceWillSleepNotification,
+                NSWorkspaceSessionDidResignActiveNotification,
+            ],
+            [
+                NSWorkspaceScreensDidWakeNotification,
+                NSWorkspaceDidWakeNotification,
+                NSWorkspaceSessionDidBecomeActiveNotification,
+            ],
+        )
+    };
+    for name in pauses {
+        observe(&workspace, name, app, SYSTEM_PAUSE);
+    }
+    for name in resumes {
+        observe(&workspace, name, app, SYSTEM_RESUME);
+    }
+    for name in ["com.apple.screensaver.didstart", "com.apple.screenIsLocked"] {
+        observe(&distributed, &NSString::from_str(name), app, SYSTEM_PAUSE);
+    }
+    for name in [
+        "com.apple.screensaver.didstop",
+        "com.apple.screenIsUnlocked",
+    ] {
+        observe(&distributed, &NSString::from_str(name), app, SYSTEM_RESUME);
+    }
+}
+
+fn observe(
+    center: &NSNotificationCenter,
+    name: &NSNotificationName,
+    app: &AppHandle,
+    event: &'static str,
+) {
+    let app = app.clone();
+    let label = name.to_string();
+    let block = RcBlock::new(move |_: NonNull<NSNotification>| {
+        log::info!("{label} → {event}");
+        let _ = app.emit(event, ());
+    });
+    let observer = unsafe {
+        center.addObserverForName_object_queue_usingBlock(
+            Some(name),
+            None,
+            Some(&NSOperationQueue::mainQueue()),
+            &block,
+        )
+    };
+    std::mem::forget(observer);
+}
 
 pub fn describe_displays(app: &AppHandle, displays: &mut [DisplayInfo]) {
     let rects: Vec<_> = displays.iter().map(DisplayInfo::logical_rect).collect();

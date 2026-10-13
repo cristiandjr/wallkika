@@ -31,7 +31,7 @@ impl MediaScope {
     }
 
     pub fn allows(&self, path: &Path) -> bool {
-        let Ok(path) = path.canonicalize() else {
+        let Ok(path) = crate::media::canonical_path(path) else {
             return false;
         };
         lock(&self.files).contains(&path)
@@ -67,18 +67,28 @@ fn respond<R: Runtime>(app: &AppHandle<R>, request: &Request<Vec<u8>>) -> Respon
         .headers()
         .get(header::RANGE)
         .and_then(|value| value.to_str().ok());
-    serve(&path, range).unwrap_or_else(|err| {
+    let origin = request
+        .headers()
+        .get(header::ORIGIN)
+        .and_then(|value| value.to_str().ok())
+        .filter(|origin| *origin != "null");
+    serve(&path, range, origin).unwrap_or_else(|err| {
         log::warn!("Could not serve {}: {err}", path.display());
         empty(StatusCode::NOT_FOUND)
     })
 }
 
-fn serve(path: &Path, range: Option<&str>) -> io::Result<Response<Vec<u8>>> {
+// CORS lets the panel draw a frame on a canvas for the lock screen; sandboxed HTML wallpapers (origin "null") stay out.
+fn serve(path: &Path, range: Option<&str>, origin: Option<&str>) -> io::Result<Response<Vec<u8>>> {
     let mut file = File::open(path)?;
     let len = file.metadata()?.len();
-    let builder = Response::builder()
+    let mut builder = Response::builder()
         .header(header::CONTENT_TYPE, mime_type(path))
-        .header(header::ACCEPT_RANGES, "bytes");
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::VARY, "Origin");
+    if let Some(origin) = origin {
+        builder = builder.header(header::ACCESS_CONTROL_ALLOW_ORIGIN, origin);
+    }
 
     let (start, end) = match (range, len) {
         (None, len) if len <= MAX_FULL_READ => {
@@ -93,7 +103,7 @@ fn serve(path: &Path, range: Option<&str>) -> io::Result<Response<Vec<u8>>> {
         (Some(range), len) => match byte_range(range, len) {
             Some(bounds) => bounds,
             None => {
-                return Ok(Response::builder()
+                return Ok(builder
                     .status(StatusCode::RANGE_NOT_SATISFIABLE)
                     .header(header::CONTENT_RANGE, format!("bytes */{len}"))
                     .body(Vec::new())
@@ -236,6 +246,25 @@ mod tests {
         assert_eq!(byte_range("items=0-1", 100), None);
         assert_eq!(byte_range("bytes=abc", 100), None);
         assert_eq!(byte_range("bytes=0-1", 0), None);
+    }
+
+    #[test]
+    fn lets_the_app_read_frames_but_not_sandboxed_pages() {
+        let file = std::env::temp_dir().join(format!("wallkika-cors-{}.mp4", std::process::id()));
+        std::fs::write(&file, b"frames").unwrap();
+        let allowed = |origin| {
+            serve(&file, Some("bytes=0-3"), origin)
+                .unwrap()
+                .headers()
+                .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .map(|value| value.to_str().unwrap().to_string())
+        };
+        assert_eq!(
+            allowed(Some("tauri://localhost")).as_deref(),
+            Some("tauri://localhost")
+        );
+        assert_eq!(allowed(None), None);
+        std::fs::remove_file(file).unwrap();
     }
 
     #[test]

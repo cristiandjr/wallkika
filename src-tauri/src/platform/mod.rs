@@ -17,8 +17,11 @@ use self::windows as imp;
 
 pub use imp::{
     after_live_windows_closed, attach_live_window, describe_displays, prepare_process,
-    set_static_wallpaper,
+    set_static_wallpaper, watch_system_events,
 };
+
+pub const SYSTEM_PAUSE: &str = "system-pause";
+pub const SYSTEM_RESUME: &str = "system-resume";
 
 // WebView2 needs identical flags on every window; these keep Chromium rendering behind the desktop icons.
 pub const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding";

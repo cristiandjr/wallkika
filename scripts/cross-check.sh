@@ -33,6 +33,6 @@ rustup target add x86_64-pc-windows-msvc x86_64-unknown-linux-gnu >/dev/null
 export CARGO_TARGET_DIR=target/cross
 
 echo "Windows:"
-RC="$stubs/rc" cargo clippy --target x86_64-pc-windows-msvc -- -D warnings
+RC="$stubs/rc" cargo clippy --all-targets --target x86_64-pc-windows-msvc -- -D warnings
 echo "Linux:"
-PKG_CONFIG="$stubs/pkg-config" PKG_CONFIG_ALLOW_CROSS=1 cargo clippy --target x86_64-unknown-linux-gnu -- -D warnings
+PKG_CONFIG="$stubs/pkg-config" PKG_CONFIG_ALLOW_CROSS=1 cargo clippy --all-targets --target x86_64-unknown-linux-gnu -- -D warnings

@@ -1,10 +1,11 @@
+use super::{SYSTEM_PAUSE, SYSTEM_RESUME};
 use crate::{
     display::DisplayInfo,
     error::{Error, Result},
 };
-use gtk::prelude::*;
+use gtk::{gio, prelude::*};
 use std::{env, path::Path, process::Command};
-use tauri::{AppHandle, WebviewWindow};
+use tauri::{AppHandle, Emitter, WebviewWindow};
 
 const XFCE_STYLE_ZOOMED: &str = "5";
 
@@ -211,6 +212,47 @@ pub fn attach_live_window(window: &WebviewWindow, display: &DisplayInfo) -> Resu
     gtk_window.resize(width.round() as i32, height.round() as i32);
     gtk_window.show_all();
     Ok(())
+}
+
+pub fn watch_system_events(app: &AppHandle) {
+    // ActiveChanged comes from org.freedesktop, org.gnome, org.mate or org.cinnamon ScreenSaver.
+    subscribe(app, gio::BusType::Session, None, "ActiveChanged");
+    subscribe(
+        app,
+        gio::BusType::System,
+        Some("org.freedesktop.login1.Manager"),
+        "PrepareForSleep",
+    );
+}
+
+fn subscribe(app: &AppHandle, bus: gio::BusType, interface: Option<&str>, signal: &str) {
+    let connection = match gio::bus_get_sync(bus, gio::Cancellable::NONE) {
+        Ok(connection) => connection,
+        Err(err) => {
+            log::warn!("Could not watch {signal}: {err}");
+            return;
+        }
+    };
+    let app = app.clone();
+    connection.signal_subscribe(
+        None,
+        interface,
+        Some(signal),
+        None,
+        None,
+        gio::DBusSignalFlags::NONE,
+        move |_, _, _, interface, signal, parameters| {
+            let known = interface.ends_with(".ScreenSaver")
+                || interface.starts_with("org.freedesktop.login1");
+            let Some((active,)) = parameters.get::<(bool,)>().filter(|_| known) else {
+                return;
+            };
+            let event = if active { SYSTEM_PAUSE } else { SYSTEM_RESUME };
+            log::info!("{interface}.{signal}({active}) → {event}");
+            let _ = app.emit(event, ());
+        },
+    );
+    std::mem::forget(connection);
 }
 
 pub fn after_live_windows_closed() {}

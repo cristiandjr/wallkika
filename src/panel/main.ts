@@ -8,6 +8,8 @@ import {
   type Layout,
   type LayoutMode,
   type MediaKind,
+  type Screensaver,
+  type ScreensaverInfo,
   type Wallpaper,
 } from "../shared/api";
 
@@ -17,6 +19,11 @@ const KIND_LABEL: Record<MediaKind, string> = {
   video: "Video",
   web: "Web page",
 };
+
+const STILL_MAX_SIDE = 3840;
+const STILL_TIMEOUT_MS = 20000;
+const MOON_ICON =
+  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
 
 const byId = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -34,6 +41,10 @@ const displayMap = byId("display-map");
 const displayList = byId<HTMLUListElement>("display-list");
 const displaysCount = byId("displays-count");
 const backgroundNote = byId("background-note");
+const saverTitle = byId("saver-title");
+const saverHint = byId("saver-hint");
+const saverSwitch = byId<HTMLInputElement>("saver-switch");
+const saverSettings = byId<HTMLButtonElement>("saver-settings");
 const updateBanner = byId<HTMLButtonElement>("update-banner");
 const dropOverlay = byId("drop-overlay");
 const dropText = byId("drop-text");
@@ -41,8 +52,11 @@ const about = byId("about");
 const aboutVersion = byId("about-version");
 const toast = byId("toast");
 
-let layout: Layout = { mode: "mirror", all: null, displays: {} };
+let layout: Layout = { mode: "mirror", all: null, displays: {}, screensaver: { enabled: false, display: null } };
 let displays: DisplayInfo[] = [];
+let saverInfo: ScreensaverInfo = { screensaver: false, selected: null };
+let lockScreenRunning = false;
+let lockScreenAgain = false;
 let selectedId: string | null = null;
 let busy = false;
 let currentVersion = "";
@@ -85,6 +99,7 @@ function render() {
   renderMode();
   renderCurrent();
   renderActions();
+  renderSaver();
   renderDisplays();
 }
 
@@ -173,27 +188,97 @@ function renderActions() {
   }
 }
 
+function saverDisplayId(): string | null {
+  const chosen = layout.screensaver.display;
+  if (chosen && layout.displays[chosen]) return chosen;
+  return Object.keys(layout.displays).sort()[0] ?? null;
+}
+
+function saverDisplay(): DisplayInfo | undefined {
+  const id = saverDisplayId();
+  return displays.find((d) => d.id === id);
+}
+
+function saverWallpaper(): Wallpaper | null {
+  if (!layout.screensaver.enabled) return null;
+  if (!perDisplay()) return layout.all;
+  const id = saverDisplayId();
+  return id ? layout.displays[id] : null;
+}
+
+function saverNeedsChoosing(): boolean {
+  return saverInfo.screensaver && saverInfo.selected === false && saverWallpaper() !== null;
+}
+
+function saverHintText(): string {
+  const both = saverInfo.screensaver;
+  if (!layout.screensaver.enabled) {
+    return both ? "Show this wallpaper as screen saver and on the lock screen." : "Show this wallpaper on the lock screen.";
+  }
+  const wallpaper = saverWallpaper();
+  if (!wallpaper) {
+    return perDisplay() ? "Choose a wallpaper and pick its display with the moon." : "It starts once you choose a wallpaper.";
+  }
+  if (saverNeedsChoosing()) return "Last step: click Settings… and choose WallKika.";
+  const display = saverDisplay();
+  const source = perDisplay() && display ? displayNumber(display) : "Your wallpaper";
+  const still = wallpaper.kind === "web" ? "HTML can't go on the lock screen" : "a still on the lock screen";
+  return both ? `${source} is your screen saver, with ${still}.` : `${source} shows as ${still}.`;
+}
+
+function renderSaver() {
+  saverTitle.textContent = saverInfo.screensaver ? "Screen saver & lock screen" : "Lock screen";
+  saverSwitch.checked = layout.screensaver.enabled;
+  saverSettings.hidden = !saverInfo.screensaver;
+  saverHint.textContent = saverHintText();
+  saverHint.classList.toggle("pending", saverNeedsChoosing());
+}
+
+function saverToggle(display: DisplayInfo): HTMLButtonElement {
+  const number = displayNumber(display);
+  const chosen = layout.screensaver.enabled && saverDisplay() === display;
+  const button = element("button", "saver-pick");
+  button.type = "button";
+  button.innerHTML = MOON_ICON;
+  button.setAttribute("aria-pressed", String(chosen));
+  button.disabled = !layout.displays[display.id];
+  button.title = chosen
+    ? `${number} is your screen saver and lock screen`
+    : button.disabled
+      ? `Choose a wallpaper for ${number} first`
+      : `Use ${number} for the screen saver and lock screen`;
+  button.addEventListener("click", () => {
+    if (!chosen) void updateSaver({ enabled: true, display: display.id }, `${number} goes to the screen saver and lock screen`);
+  });
+  return button;
+}
+
 function renderDisplays() {
   displaysCount.textContent = String(displays.length);
   const selected = selectedDisplay();
 
   displayList.replaceChildren(
     ...displays.map((display, index) => {
-      const row = perDisplay() ? element("button", "display-item selectable") : element("div", "display-item");
-      if (row instanceof HTMLButtonElement) {
-        row.type = "button";
-        row.classList.toggle("selected", display === selected);
-        row.addEventListener("click", () => select(display.id));
-      }
+      const main = perDisplay() ? element("button", "display-select") : element("div", "display-select");
       const body = element("span", "display-body");
       body.append(element("span", "display-name", display.name));
       if (perDisplay()) {
         body.append(element("span", "display-assigned", layout.displays[display.id]?.name ?? "System wallpaper"));
       }
       const scale = display.scaleFactor === 1 ? "" : ` · ${+display.scaleFactor.toFixed(2)}x`;
-      row.append(element("span", "display-index", String(index + 1)), body);
-      if (display.primary) row.append(element("span", "tag", "Main"));
-      row.append(element("span", "display-spec", `${display.width} × ${display.height}${scale}`));
+      main.append(element("span", "display-index", String(index + 1)), body);
+      if (display.primary) main.append(element("span", "tag", "Main"));
+      main.append(element("span", "display-spec", `${display.width} × ${display.height}${scale}`));
+
+      const row = element("div", "display-item");
+      row.append(main);
+      if (main instanceof HTMLButtonElement) {
+        main.type = "button";
+        main.addEventListener("click", () => select(display.id));
+        row.classList.add("selectable");
+        row.classList.toggle("selected", display === selected);
+        row.append(saverToggle(display));
+      }
       const item = element("li", "display-row");
       item.append(row);
       return item;
@@ -290,6 +375,93 @@ function choose() {
   void run(async () => announce(await api.chooseWallpaper(target())));
 }
 
+async function updateSaver(next: Screensaver, message: string) {
+  try {
+    saverInfo = await api.setScreensaver(next);
+    layout = { ...layout, screensaver: next };
+    showToast(saverNeedsChoosing() ? "Almost done: choose WallKika in Settings" : message);
+  } catch (error) {
+    showToast(errorText(error), "error");
+  }
+  renderSaver();
+}
+
+async function refreshSaverInfo() {
+  try {
+    saverInfo = await api.getScreensaverInfo();
+    renderSaver();
+  } catch {
+    return;
+  }
+}
+
+function once(media: HTMLMediaElement, event: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("the video took too long to load")), STILL_TIMEOUT_MS);
+    media.addEventListener(
+      event,
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+    media.addEventListener("error", () => reject(new Error(`could not read the video (code ${media.error?.code})`)), {
+      once: true,
+    });
+  });
+}
+
+async function captureStill(wallpaper: Wallpaper): Promise<ArrayBuffer> {
+  let source: CanvasImageSource;
+  let width: number;
+  let height: number;
+  if (wallpaper.kind === "video") {
+    const video = document.createElement("video");
+    video.crossOrigin = "anonymous";
+    video.muted = true;
+    video.preload = "auto";
+    video.src = mediaUrl(wallpaper.path);
+    await once(video, "loadeddata");
+    video.currentTime = Math.min(video.duration / 3, 30);
+    await once(video, "seeked");
+    [source, width, height] = [video, video.videoWidth, video.videoHeight];
+  } else {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.src = mediaUrl(wallpaper.path);
+    await image.decode();
+    [source, width, height] = [image, image.naturalWidth, image.naturalHeight];
+  }
+  const scale = Math.min(1, STILL_MAX_SIDE / Math.max(width, height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  canvas.getContext("2d")!.drawImage(source, 0, 0, canvas.width, canvas.height);
+  const still = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+  if (!still) throw new Error("could not encode the picture");
+  return still.arrayBuffer();
+}
+
+async function updateLockScreen() {
+  if (lockScreenRunning) {
+    lockScreenAgain = true;
+    return;
+  }
+  lockScreenRunning = true;
+  try {
+    do {
+      lockScreenAgain = false;
+      const wallpaper = await api.lockScreenRequest();
+      if (wallpaper) await api.setLockScreenImage(wallpaper.path, await captureStill(wallpaper));
+    } while (lockScreenAgain);
+  } catch (error) {
+    showToast(`Lock screen: ${errorText(error)}`, "error");
+  } finally {
+    lockScreenRunning = false;
+  }
+}
+
 function openAbout() {
   about.hidden = false;
   byId<HTMLButtonElement>("about-close").focus();
@@ -323,6 +495,18 @@ for (const button of modeButtons) {
 }
 
 chooseButton.addEventListener("click", choose);
+
+saverSwitch.addEventListener("change", () => {
+  const enabled = saverSwitch.checked;
+  const display = layout.screensaver.display ?? (perDisplay() ? (selectedDisplay()?.id ?? null) : null);
+  void updateSaver(
+    { enabled, display },
+    enabled ? "Screen saver and lock screen on" : "Screen saver and lock screen off",
+  );
+});
+saverSettings.addEventListener("click", () =>
+  api.openScreensaverSettings().catch((error) => showToast(errorText(error), "error")),
+);
 
 stopButton.addEventListener("click", () =>
   run(async () => {
@@ -361,6 +545,7 @@ window.addEventListener("resize", () => renderDisplayMap());
 void events.onLayoutChanged((next) => {
   layout = next;
   render();
+  void updateLockScreen();
 });
 void events.onDisplaysChanged((list) => {
   displays = list;
@@ -407,8 +592,11 @@ updateBanner.addEventListener("click", () =>
   api.openUpdate().catch((error) => showToast(errorText(error), "error")),
 );
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) void checkForUpdates();
+  if (document.hidden) return;
+  void checkForUpdates();
+  void refreshSaverInfo();
 });
+window.addEventListener("focus", () => void refreshSaverInfo());
 setInterval(() => void checkForUpdates(), UPDATE_INTERVAL_MS);
 
 api.getOverview().then(
@@ -417,6 +605,7 @@ api.getOverview().then(
     displays = overview.displays;
     currentVersion = overview.version;
     updateFeed = overview.updateFeed;
+    saverInfo = overview.screensaver;
     if (overview.update) showUpdate(overview.update.version);
     void checkForUpdates();
     aboutVersion.textContent = `Version ${overview.version}`;
@@ -424,6 +613,7 @@ api.getOverview().then(
       overview.platform === "macos" ? "menu bar" : "system tray"
     }.`;
     render();
+    void updateLockScreen();
   },
   (error) => showToast(errorText(error), "error"),
 );

@@ -6,6 +6,7 @@ mod layout;
 mod media;
 mod platform;
 mod protocol;
+mod screensaver;
 mod settings;
 mod tray;
 mod updates;
@@ -28,7 +29,15 @@ struct Launch {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     platform::prepare_process();
+    let context = tauri::generate_context!();
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match screensaver::Mode::from_args(&args) {
+        Some(mode) => screensaver::run(mode, context),
+        None => run_app(context),
+    }
+}
 
+fn run_app(context: tauri::Context<tauri::Wry>) {
     let builder = tauri::Builder::default()
         // Must be the first plugin: a second launch forwards its args here and exits.
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
@@ -50,6 +59,7 @@ pub fn run() {
             app.manage(Engine::new(settings_path));
             create_panel(app.handle())?;
             tray::create(app.handle())?;
+            platform::watch_system_events(app.handle());
 
             let args: Vec<String> = std::env::args().skip(1).collect();
             let launch = parse_launch(&args, &std::env::current_dir().unwrap_or_default());
@@ -84,6 +94,11 @@ pub fn run() {
             commands::report_renderer,
             commands::report_update,
             commands::open_update,
+            commands::set_screensaver,
+            commands::get_screensaver_info,
+            commands::open_screensaver_settings,
+            commands::lock_screen_request,
+            commands::set_lock_screen_image,
         ]);
 
     #[cfg(target_os = "macos")]
@@ -94,7 +109,7 @@ pub fn run() {
     });
 
     builder
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("failed to start WallKika")
         .run(|app, event| {
             #[cfg(target_os = "macos")]

@@ -4272,14 +4272,17 @@ dependencies = [
 
 [[package]]
 name = "wallkika"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
+ "block2",
+ "gdkx11",
  "gtk",
  "log",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
  "percent-encoding",
+ "plist",
  "serde",
  "serde_json",
  "tauri",

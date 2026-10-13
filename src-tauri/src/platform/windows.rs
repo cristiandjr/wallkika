@@ -1,27 +1,50 @@
+use super::{SYSTEM_PAUSE, SYSTEM_RESUME};
 use crate::{
     display::DisplayInfo,
     error::{Error, Result},
 };
-use std::{os::windows::ffi::OsStrExt, path::Path, thread, time::Duration};
-use tauri::{AppHandle, WebviewWindow};
+use std::{
+    os::windows::ffi::OsStrExt,
+    path::Path,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        OnceLock,
+    },
+    thread,
+    time::Duration,
+};
+use tauri::{AppHandle, Emitter, WebviewWindow};
 use windows::{
     core::{w, BOOL, HSTRING, PCWSTR},
     Win32::{
-        Foundation::{COLORREF, HWND, LPARAM, POINT, WPARAM},
+        Foundation::{COLORREF, HANDLE, HWND, LPARAM, LRESULT, POINT, WPARAM},
         Graphics::Gdi::MapWindowPoints,
-        System::Com::{
-            CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_ALL, COINIT_APARTMENTTHREADED,
+        System::{
+            Com::{
+                CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_ALL,
+                COINIT_APARTMENTTHREADED,
+            },
+            LibraryLoader::GetModuleHandleW,
+            Power::{RegisterPowerSettingNotification, POWERBROADCAST_SETTING},
+            RemoteDesktop::{WTSRegisterSessionNotification, NOTIFY_FOR_THIS_SESSION},
+            SystemServices::GUID_CONSOLE_DISPLAY_STATE,
         },
         UI::{
             Shell::{DesktopWallpaper, IDesktopWallpaper, DWPOS_FILL},
             WindowsAndMessaging::{
-                EnumWindows, FindWindowExW, FindWindowW, GetWindow, GetWindowLongPtrW,
-                SendMessageTimeoutW, SetLayeredWindowAttributes, SetParent, SetWindowLongPtrW,
-                SetWindowPos, ShowWindow, SystemParametersInfoW, GWL_EXSTYLE, GWL_STYLE, GW_CHILD,
-                GW_HWNDLAST, HWND_BOTTOM, LWA_ALPHA, SET_WINDOW_POS_FLAGS, SMTO_NORMAL,
-                SPIF_SENDCHANGE, SPIF_UPDATEINIFILE, SPI_SETDESKWALLPAPER, SWP_NOACTIVATE,
-                SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SW_SHOWNOACTIVATE, WS_CHILD, WS_EX_LAYERED,
-                WS_EX_NOACTIVATE, WS_EX_NOREDIRECTIONBITMAP, WS_EX_TOOLWINDOW, WS_POPUP,
+                CreateWindowExW, DefWindowProcW, DispatchMessageW, EnumWindows, FindWindowExW,
+                FindWindowW, GetMessageW, GetWindow, GetWindowLongPtrW, RegisterClassW,
+                SendMessageTimeoutW, SetLayeredWindowAttributes, SetParent, SetTimer,
+                SetWindowLongPtrW, SetWindowPos, ShowWindow, SystemParametersInfoW,
+                DEVICE_NOTIFY_WINDOW_HANDLE, GWL_EXSTYLE, GWL_STYLE, GW_CHILD, GW_HWNDLAST,
+                HWND_BOTTOM, LWA_ALPHA, MSG, PBT_APMRESUMEAUTOMATIC, PBT_APMSUSPEND,
+                PBT_POWERSETTINGCHANGE, SET_WINDOW_POS_FLAGS, SMTO_NORMAL, SPIF_SENDCHANGE,
+                SPIF_UPDATEINIFILE, SPI_GETSCREENSAVERRUNNING, SPI_SETDESKWALLPAPER,
+                SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SW_SHOWNOACTIVATE,
+                SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, WINDOW_EX_STYLE, WM_POWERBROADCAST, WM_TIMER,
+                WM_WTSSESSION_CHANGE, WNDCLASSW, WS_CHILD, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+                WS_EX_NOREDIRECTIONBITMAP, WS_EX_TOOLWINDOW, WS_OVERLAPPED, WS_POPUP,
+                WTS_SESSION_LOCK, WTS_SESSION_UNLOCK,
             },
         },
     },
@@ -29,6 +52,13 @@ use windows::{
 
 // Undocumented Progman message that makes Explorer create the WorkerW layer behind the icons.
 const SPAWN_WORKERW: u32 = 0x052C;
+const SCREENSAVER_TIMER: usize = 1;
+const DISPLAY_STATE_OFF: u32 = 0;
+const SCREENSAVER_POLL_MS: u32 = 2000;
+
+static EVENTS_APP: OnceLock<AppHandle> = OnceLock::new();
+static DISPLAY_ON: AtomicBool = AtomicBool::new(true);
+static SCREENSAVER_RUNNING: AtomicBool = AtomicBool::new(false);
 
 struct DesktopHost {
     parent: HWND,
@@ -133,6 +163,131 @@ pub fn attach_live_window(window: &WebviewWindow, display: &DisplayInfo) -> Resu
 }
 
 pub fn describe_displays(_app: &AppHandle, _displays: &mut [DisplayInfo]) {}
+
+pub fn watch_system_events(app: &AppHandle) {
+    if EVENTS_APP.set(app.clone()).is_err() {
+        return;
+    }
+    let spawned = thread::Builder::new()
+        .name("wallkika-system-events".into())
+        .spawn(|| {
+            if let Err(err) = unsafe { listen_for_system_events() } {
+                log::warn!("Could not watch lock, sleep and screen saver events: {err}");
+            }
+        });
+    if let Err(err) = spawned {
+        log::warn!("Could not start the system events thread: {err}");
+    }
+}
+
+// A hidden top-level window: power broadcasts never reach message-only windows.
+unsafe fn listen_for_system_events() -> Result<()> {
+    let failed = |err: windows::core::Error| Error::platform(err.message());
+    let instance = GetModuleHandleW(None).map_err(failed)?;
+    let class = w!("WallKikaSystemEvents");
+    let window_class = WNDCLASSW {
+        lpfnWndProc: Some(on_system_event),
+        hInstance: instance.into(),
+        lpszClassName: class,
+        ..Default::default()
+    };
+    if RegisterClassW(&window_class) == 0 {
+        return Err(failed(windows::core::Error::from_thread()));
+    }
+    let hwnd = CreateWindowExW(
+        WINDOW_EX_STYLE(0),
+        class,
+        w!("WallKika"),
+        WS_OVERLAPPED,
+        0,
+        0,
+        0,
+        0,
+        None,
+        None,
+        Some(instance.into()),
+        None,
+    )
+    .map_err(failed)?;
+    WTSRegisterSessionNotification(hwnd, NOTIFY_FOR_THIS_SESSION).map_err(failed)?;
+    RegisterPowerSettingNotification(
+        HANDLE(hwnd.0),
+        &GUID_CONSOLE_DISPLAY_STATE,
+        DEVICE_NOTIFY_WINDOW_HANDLE,
+    )
+    .map_err(failed)?;
+    SetTimer(Some(hwnd), SCREENSAVER_TIMER, SCREENSAVER_POLL_MS, None);
+
+    let mut message = MSG::default();
+    while GetMessageW(&mut message, None, 0, 0).0 > 0 {
+        DispatchMessageW(&message);
+    }
+    Ok(())
+}
+
+unsafe extern "system" fn on_system_event(
+    hwnd: HWND,
+    message: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
+    match message {
+        WM_WTSSESSION_CHANGE => match wparam.0 as u32 {
+            WTS_SESSION_LOCK => notify(SYSTEM_PAUSE, "Session locked"),
+            WTS_SESSION_UNLOCK => notify(SYSTEM_RESUME, "Session unlocked"),
+            _ => {}
+        },
+        WM_POWERBROADCAST => match wparam.0 as u32 {
+            PBT_APMSUSPEND => notify(SYSTEM_PAUSE, "Going to sleep"),
+            PBT_APMRESUMEAUTOMATIC => notify(SYSTEM_RESUME, "Woke up"),
+            PBT_POWERSETTINGCHANGE => display_state_changed(lparam),
+            _ => {}
+        },
+        WM_TIMER if wparam.0 == SCREENSAVER_TIMER => poll_screensaver(),
+        _ => {}
+    }
+    DefWindowProcW(hwnd, message, wparam, lparam)
+}
+
+unsafe fn display_state_changed(lparam: LPARAM) {
+    let setting = &*(lparam.0 as *const POWERBROADCAST_SETTING);
+    if setting.PowerSetting != GUID_CONSOLE_DISPLAY_STATE || setting.DataLength < 4 {
+        return;
+    }
+    let on = std::ptr::read_unaligned(setting.Data.as_ptr().cast::<u32>()) != DISPLAY_STATE_OFF;
+    if DISPLAY_ON.swap(on, Ordering::SeqCst) != on {
+        match on {
+            true => notify(SYSTEM_RESUME, "Display on"),
+            false => notify(SYSTEM_PAUSE, "Display off"),
+        }
+    }
+}
+
+fn poll_screensaver() {
+    let mut running = BOOL(0);
+    let read = unsafe {
+        SystemParametersInfoW(
+            SPI_GETSCREENSAVERRUNNING,
+            0,
+            Some((&mut running as *mut BOOL).cast()),
+            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
+        )
+    };
+    let running = read.is_ok() && running.as_bool();
+    if SCREENSAVER_RUNNING.swap(running, Ordering::SeqCst) != running {
+        match running {
+            true => notify(SYSTEM_PAUSE, "Screen saver started"),
+            false => notify(SYSTEM_RESUME, "Screen saver stopped"),
+        }
+    }
+}
+
+fn notify(event: &'static str, reason: &str) {
+    log::info!("{reason} → {event}");
+    if let Some(app) = EVENTS_APP.get() {
+        let _ = app.emit(event, ());
+    }
+}
 
 pub fn after_live_windows_closed() {
     unsafe {

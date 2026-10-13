@@ -108,6 +108,29 @@ pub fn lock_screen_request(app: &AppHandle, layout: &Layout) -> Option<Wallpaper
     needs_still(wallpaper, applied.as_deref()).then(|| wallpaper.clone())
 }
 
+// Displays that appear later get the system wallpaper of the moment, so the still is applied again.
+pub fn reapply_lock_screen(app: &AppHandle, layout: &Layout) {
+    if !imp::LOCK_SCREEN_SHOWS_DESKTOP {
+        return;
+    }
+    let Some(wallpaper) = layout.screensaver_wallpaper() else {
+        return;
+    };
+    let Ok(dir) = config_dir(app) else {
+        return;
+    };
+    let applied = fs::read_to_string(dir.join(LOCK_SCREEN_SOURCE)).ok();
+    if needs_still(wallpaper, applied.as_deref()) || applied.is_none() {
+        return;
+    }
+    let still = still_path(&dir, wallpaper);
+    if still.is_file() {
+        if let Err(err) = imp::set_lock_screen(app, &still) {
+            log::warn!("Could not apply the lock screen picture again: {err}");
+        }
+    }
+}
+
 fn needs_still(wallpaper: &Wallpaper, applied: Option<&str>) -> bool {
     let already_on_desktop = imp::LOCK_SCREEN_SHOWS_DESKTOP && wallpaper.mode == RenderMode::Native;
     wallpaper.kind != MediaKind::Web
@@ -127,7 +150,7 @@ pub fn set_lock_screen(app: &AppHandle, layout: &Layout, source: &Path, jpeg: &[
     }
     let key = source_key(wallpaper);
     let dir = config_dir(app)?;
-    let still = dir.join(format!("{LOCK_SCREEN_PREFIX}{:016x}.jpg", hash(&key)));
+    let still = still_path(&dir, wallpaper);
     for entry in fs::read_dir(&dir)? {
         let path = entry?.path();
         let old_still = path
@@ -143,6 +166,13 @@ pub fn set_lock_screen(app: &AppHandle, layout: &Layout, source: &Path, jpeg: &[
     fs::write(dir.join(LOCK_SCREEN_SOURCE), key)?;
     log::info!("Lock screen shows a still of {}", wallpaper.name);
     Ok(())
+}
+
+fn still_path(dir: &Path, wallpaper: &Wallpaper) -> PathBuf {
+    dir.join(format!(
+        "{LOCK_SCREEN_PREFIX}{:016x}.jpg",
+        hash(&source_key(wallpaper))
+    ))
 }
 
 fn source_key(wallpaper: &Wallpaper) -> String {

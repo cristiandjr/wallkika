@@ -186,6 +186,11 @@ impl Engine {
         } else {
             screensaver::sync(app, &self.layout());
         }
+        screensaver::reapply_lock_screen(app, &self.layout());
+    }
+
+    pub fn displays_changed(&self, app: &AppHandle) {
+        screensaver::reapply_lock_screen(app, &self.layout());
     }
 
     pub fn sync_live_windows(&self, app: &AppHandle, displays: &[DisplayInfo]) -> Result<()> {

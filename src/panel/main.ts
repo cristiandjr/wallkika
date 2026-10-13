@@ -22,6 +22,8 @@ const KIND_LABEL: Record<MediaKind, string> = {
 
 const STILL_MAX_SIDE = 3840;
 const STILL_TIMEOUT_MS = 20000;
+const STILL_CANDIDATES = [0.1, 0.25, 0.5, 0.75];
+const STILL_MIN_BRIGHTNESS = 6;
 const MOON_ICON =
   '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
 
@@ -412,6 +414,52 @@ function once(media: HTMLMediaElement, event: string): Promise<void> {
   });
 }
 
+function frameStats(source: CanvasImageSource): { brightness: number; contrast: number } {
+  const probe = document.createElement("canvas");
+  probe.width = 96;
+  probe.height = 54;
+  const context = probe.getContext("2d")!;
+  context.drawImage(source, 0, 0, probe.width, probe.height);
+  const pixels = context.getImageData(0, 0, probe.width, probe.height).data;
+  let sum = 0;
+  let squares = 0;
+  const count = pixels.length / 4;
+  for (let i = 0; i < pixels.length; i += 4) {
+    const luma = pixels[i] * 0.299 + pixels[i + 1] * 0.587 + pixels[i + 2] * 0.114;
+    sum += luma;
+    squares += luma * luma;
+  }
+  const brightness = sum / count;
+  return { brightness, contrast: Math.sqrt(Math.max(0, squares / count - brightness * brightness)) };
+}
+
+async function presentFrame(video: HTMLVideoElement, time: number) {
+  video.currentTime = time;
+  await once(video, "seeked");
+  await video.play().catch(() => {});
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, 1500);
+    video.requestVideoFrameCallback(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+  video.pause();
+}
+
+async function bestFrame(video: HTMLVideoElement) {
+  let best = { score: -1, time: 0 };
+  const times = [...new Set(STILL_CANDIDATES.map((fraction) => Math.min(video.duration * fraction, fraction * 300)))];
+  for (const time of times) {
+    await presentFrame(video, time);
+    const { brightness, contrast } = frameStats(video);
+    const score = brightness < STILL_MIN_BRIGHTNESS ? brightness / STILL_MIN_BRIGHTNESS : 1 + contrast + brightness / 8;
+    if (score > best.score) best = { score, time };
+    if (brightness >= STILL_MIN_BRIGHTNESS && contrast >= 12) break;
+  }
+  if (video.currentTime !== best.time) await presentFrame(video, best.time);
+}
+
 async function captureStill(wallpaper: Wallpaper): Promise<ArrayBuffer> {
   let source: CanvasImageSource;
   let width: number;
@@ -423,8 +471,7 @@ async function captureStill(wallpaper: Wallpaper): Promise<ArrayBuffer> {
     video.preload = "auto";
     video.src = mediaUrl(wallpaper.path);
     await once(video, "loadeddata");
-    video.currentTime = Math.min(video.duration / 3, 30);
-    await once(video, "seeked");
+    await bestFrame(video);
     [source, width, height] = [video, video.videoWidth, video.videoHeight];
   } else {
     const image = new Image();

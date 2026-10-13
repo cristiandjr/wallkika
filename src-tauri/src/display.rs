@@ -81,6 +81,7 @@ pub fn spawn_watcher(app: AppHandle) {
                     log::info!("Displays: {}", summary(&displays));
                     if last.is_some() {
                         let _ = app.emit(DISPLAYS_CHANGED, &displays);
+                        app.state::<Engine>().displays_changed(&app);
                     }
                     last = Some(displays.clone());
                 }
